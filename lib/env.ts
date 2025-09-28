@@ -13,6 +13,13 @@ export const env = createEnv({
     // Database Configuration
     DATABASE_URL: z.string().min(1, "Database URL is required"),
 
+    // Overleaf CE Integration
+    DOCKER_SOCKET_PATH: z.string().default("/var/run/docker.sock"),
+    SHARELATEX_CONTAINER: z.string().default("sharelatex"),
+    MONGODB_URL: z.string().min(1, "MongoDB URL is required"),
+    REDIS_URL: z.string().min(1, "Redis URL is required"),
+    OVERLEAF_TOOLKIT_PATH: z.string().optional(),
+
     // Node Environment
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -36,6 +43,11 @@ export const env = createEnv({
     // Server-side variables
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
+    DOCKER_SOCKET_PATH: process.env.DOCKER_SOCKET_PATH,
+    SHARELATEX_CONTAINER: process.env.SHARELATEX_CONTAINER,
+    MONGODB_URL: process.env.MONGODB_URL,
+    REDIS_URL: process.env.REDIS_URL,
+    OVERLEAF_TOOLKIT_PATH: process.env.OVERLEAF_TOOLKIT_PATH,
     NODE_ENV: process.env.NODE_ENV,
 
     // Client-side variables
