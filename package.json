@@ -10,7 +10,9 @@
     "format": "biome format --write",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:integration": "vitest --config vitest.integration.config.ts",
+    "test:integration:run": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -62,6 +64,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.2",
     "drizzle-kit": "^0.31.5",
     "lucide-react": "^0.544.0",
     "tailwindcss": "^4",

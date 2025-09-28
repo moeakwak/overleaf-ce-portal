@@ -37,6 +37,8 @@ export class MongoDBManager {
         connectTimeoutMS: 10000,
         // Read-only mode for safety
         readPreference: "secondaryPreferred",
+        // Direct connection to bypass replica set discovery
+        directConnection: true,
       });
 
       await this.client.connect();

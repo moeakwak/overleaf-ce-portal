@@ -53,6 +53,7 @@
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
+        "dotenv": "^17.2.2",
         "drizzle-kit": "^0.31.5",
         "lucide-react": "^0.544.0",
         "tailwindcss": "^4",
