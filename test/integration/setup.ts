@@ -20,11 +20,18 @@ if (!process.env.NODE_ENV) {
 
 // Export a helper to verify env is available
 export function verifyEnvironment() {
-  const required = ["MONGODB_URL", "REDIS_URL", "DATABASE_URL", "BETTER_AUTH_SECRET"];
-  const missing = required.filter(key => !process.env[key]);
+  const required = [
+    "MONGODB_URL",
+    "REDIS_URL",
+    "DATABASE_URL",
+    "BETTER_AUTH_SECRET",
+  ];
+  const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables for integration tests: ${missing.join(", ")}\nPlease ensure .env.local file exists and contains these variables.`);
+    throw new Error(
+      `Missing required environment variables for integration tests: ${missing.join(", ")}\nPlease ensure .env.local file exists and contains these variables.`,
+    );
   }
 
   return true;

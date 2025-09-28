@@ -16,4 +16,3 @@ export const createSSGHelpers = async (req: Request) => {
 };
 
 export const createCaller = createTRPCCaller;
-

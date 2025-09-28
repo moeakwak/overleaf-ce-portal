@@ -39,4 +39,3 @@ const placeholderAuthMiddleware = t.middleware(async ({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(placeholderAuthMiddleware);
 
 export const createCallerFactory = t.createCallerFactory;
-

@@ -11,7 +11,7 @@ vi.mock("@/lib/env", () => ({
     SHARELATEX_CONTAINER: "sharelatex",
     MONGODB_URL: "mongodb://localhost:27017/sharelatex",
     REDIS_URL: "redis://localhost:6379",
-    NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
   },
 }));
 

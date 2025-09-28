@@ -9,14 +9,14 @@ export default defineConfig({
     timeout: 10000,
     include: [
       "test/**/*.{test,spec}.ts",
-      "!test/integration/**"  // Exclude integration tests
+      "!test/integration/**", // Exclude integration tests
     ],
-    pool: "forks",  // Use forks for better test isolation
+    pool: "forks", // Use forks for better test isolation
     poolOptions: {
       forks: {
-        singleFork: false  // Run each test file in a separate process
-      }
-    }
+        singleFork: false, // Run each test file in a separate process
+      },
+    },
   },
   resolve: {
     alias: {
