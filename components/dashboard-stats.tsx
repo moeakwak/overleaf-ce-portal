@@ -5,6 +5,7 @@ import {
   IconTrendingDown,
   IconTrendingUp,
 } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -15,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc/client";
-import { useEffect, useState } from "react";
 
 export function DashboardStats() {
   const [currentTime, setCurrentTime] = useState<string>("");

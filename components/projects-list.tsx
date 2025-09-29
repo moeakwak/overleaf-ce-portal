@@ -1,19 +1,15 @@
 "use client";
 
 import {
-  IconChevronLeft,
-  IconChevronRight,
   IconDownload,
-  IconEye,
   IconFileText,
   IconFolder,
   IconLoader,
-  IconSearch,
-  IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ProjectsDataTable } from "@/components/projects-table/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,59 +30,29 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { trpc } from "@/lib/trpc/client";
 
 export function ProjectsList() {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, _setPageSize] = useState(25);
-  const [searchName, setSearchName] = useState("");
-  const [debouncedSearchName, setDebouncedSearchName] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "lastUpdated" | "owner_ref">(
-    "lastUpdated",
-  );
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [projectDetailsDrawerOpen, setProjectDetailsDrawerOpen] =
     useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
 
-  // Debounce search name
+  // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchName(searchName);
+      setDebouncedSearchTerm(searchTerm);
       setCurrentPage(0); // Reset to first page when search changes
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchName]);
-
-  // Reset page when sort changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, []);
+  }, [searchTerm]);
 
   // Queries
   const {
@@ -96,9 +62,7 @@ export function ProjectsList() {
   } = trpc.project.list.useQuery({
     limit: pageSize,
     offset: currentPage * pageSize,
-    searchName: debouncedSearchName || undefined,
-    sortBy,
-    sortOrder,
+    searchName: debouncedSearchTerm || undefined,
   });
 
   const { data: projectStats } = trpc.project.getStats.useQuery();
@@ -126,6 +90,11 @@ export function ProjectsList() {
   const handleViewProjectDetails = (project: any) => {
     setSelectedProject(project);
     setProjectDetailsDrawerOpen(true);
+  };
+
+  const handleExportFromTable = (project: any) => {
+    setSelectedProject(project);
+    setExportDialogOpen(true);
   };
 
   const totalPages = Math.ceil((projectsData?.total || 0) / pageSize);
@@ -181,44 +150,7 @@ export function ProjectsList() {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between gap-4 px-4 lg:px-6">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <IconSearch className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by project name..."
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              className="pl-8 w-64"
-            />
-          </div>
-          <Select
-            value={sortBy}
-            onValueChange={(value: any) => setSortBy(value)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="lastUpdated">Last Updated</SelectItem>
-              <SelectItem value="name">Project Name</SelectItem>
-              <SelectItem value="owner_ref">Owner</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={sortOrder}
-            onValueChange={(value: any) => setSortOrder(value)}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="desc">Newest</SelectItem>
-              <SelectItem value="asc">Oldest</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="flex items-center justify-end gap-4 px-4 lg:px-6">
         <div className="flex gap-2">
           <Button variant="outline">
             <IconDownload className="mr-2 h-4 w-4" />
@@ -229,150 +161,22 @@ export function ProjectsList() {
 
       {/* Projects Table */}
       <Card className="mx-4 lg:mx-6">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <IconLoader className="h-6 w-6 animate-spin" />
-              <span className="ml-2">Loading projects...</span>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Compiler</TableHead>
-                  <TableHead>Collaborators</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projectsData?.projects?.map((project) => (
-                  <TableRow key={project._id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <div className="font-medium max-w-[200px] truncate">
-                          {project.name || "Untitled Project"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ID: {project._id.slice(-8)}
-                        </div>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            v{project.version || 1}
-                          </Badge>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {project.owner_ref
-                          ? project.owner_ref.slice(-8)
-                          : "Unknown"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {project.compiler || "xelatex"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <IconUsers className="h-3 w-3" />
-                        <span className="text-sm">
-                          {(project.collaberator_refs?.length || 0) +
-                            (project.readOnly_refs?.length || 0)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {project.lastUpdated
-                        ? new Date(project.lastUpdated).toLocaleDateString()
-                        : "Never"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <IconSettings className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleViewProjectDetails(project)}
-                          >
-                            <IconEye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedProject(project);
-                              setExportDialogOpen(true);
-                            }}
-                          >
-                            <IconDownload className="mr-2 h-4 w-4" />
-                            Export Project
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <IconUsers className="mr-2 h-4 w-4" />
-                            View Collaborators
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )) || (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      No projects found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
+        <CardContent className="p-6">
+          <ProjectsDataTable
+            data={projectsData?.projects || []}
+            loading={isLoading}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={projectsData?.total || 0}
+            searchTerm={searchTerm}
+            onPageChange={setCurrentPage}
+            onSearchChange={setSearchTerm}
+            onViewDetails={handleViewProjectDetails}
+            onExport={handleExportFromTable}
+          />
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <div className="text-sm text-muted-foreground">
-            Showing {currentPage * pageSize + 1} to{" "}
-            {Math.min((currentPage + 1) * pageSize, projectsData?.total || 0)}{" "}
-            of {projectsData?.total || 0} projects
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-              disabled={currentPage === 0}
-            >
-              <IconChevronLeft className="h-4 w-4" />
-              Previous
-            </Button>
-            <span className="text-sm">
-              Page {currentPage + 1} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
-              }
-              disabled={currentPage >= totalPages - 1}
-            >
-              Next
-              <IconChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Export Dialog */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>

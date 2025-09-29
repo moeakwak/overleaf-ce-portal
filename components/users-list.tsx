@@ -1,31 +1,14 @@
 "use client";
 
 import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconEdit,
   IconLoader,
-  IconMail,
   IconPlus,
-  IconSearch,
   IconShield,
-  IconTrash,
   IconUser,
   IconUserPlus,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,41 +30,17 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { UsersDataTable } from "@/components/users-table/data-table";
 import { trpc } from "@/lib/trpc/client";
 
 export function UsersList() {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, _setPageSize] = useState(25);
-  const [searchEmail, setSearchEmail] = useState("");
-  const [debouncedSearchEmail, setDebouncedSearchEmail] = useState("");
-  const [sortBy, setSortBy] = useState<
-    "email" | "signUpDate" | "lastLoggedIn" | "loginCount"
-  >("signUpDate");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [userDetailsDrawerOpen, setUserDetailsDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -92,20 +51,15 @@ export function UsersList() {
     isAdmin: false,
   });
 
-  // Debounce search email
+  // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchEmail(searchEmail);
+      setDebouncedSearchTerm(searchTerm);
       setCurrentPage(0); // Reset to first page when search changes
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchEmail]);
-
-  // Reset page when sort changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, []);
+  }, [searchTerm]);
 
   // Queries
   const {
@@ -115,9 +69,7 @@ export function UsersList() {
   } = trpc.user.list.useQuery({
     limit: pageSize,
     offset: currentPage * pageSize,
-    searchEmail: debouncedSearchEmail || undefined,
-    sortBy,
-    sortOrder,
+    searchEmail: debouncedSearchTerm || undefined,
   });
 
   const { data: userStats } = trpc.user.getStats.useQuery();
@@ -211,45 +163,7 @@ export function UsersList() {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between gap-4 px-4 lg:px-6">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <IconSearch className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by email..."
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-              className="pl-8 w-64"
-            />
-          </div>
-          <Select
-            value={sortBy}
-            onValueChange={(value: any) => setSortBy(value)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="signUpDate">Sign Up Date</SelectItem>
-              <SelectItem value="email">Email</SelectItem>
-              <SelectItem value="lastLoggedIn">Last Login</SelectItem>
-              <SelectItem value="loginCount">Login Count</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={sortOrder}
-            onValueChange={(value: any) => setSortOrder(value)}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="desc">Newest</SelectItem>
-              <SelectItem value="asc">Oldest</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="flex items-center justify-end gap-4 px-4 lg:px-6">
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -338,158 +252,22 @@ export function UsersList() {
 
       {/* Users Table */}
       <Card className="mx-4 lg:mx-6">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <IconLoader className="h-6 w-6 animate-spin" />
-              <span className="ml-2">Loading users...</span>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead>Login Count</TableHead>
-                  <TableHead>Sign Up Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usersData?.users?.map((user) => (
-                  <TableRow key={user._id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <div className="font-medium">{user.email}</div>
-                        {(user.first_name || user.last_name) && (
-                          <div className="text-sm text-muted-foreground">
-                            {user.first_name} {user.last_name}
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          ID: {user._id.slice(-8)}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.isAdmin ? "default" : "secondary"}>
-                        {user.isAdmin ? "Admin" : "User"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {user.lastLoggedIn
-                        ? new Date(user.lastLoggedIn).toLocaleDateString()
-                        : "Never"}
-                    </TableCell>
-                    <TableCell>{user.loginCount || 0}</TableCell>
-                    <TableCell>
-                      {user.signUpDate
-                        ? new Date(user.signUpDate).toLocaleDateString()
-                        : "Unknown"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <IconEdit className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleViewUserDetails(user)}
-                          >
-                            <IconMail className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <IconEdit className="mr-2 h-4 w-4" />
-                            Edit User
-                          </DropdownMenuItem>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                <IconTrash className="mr-2 h-4 w-4" />
-                                Delete User
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete User</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete {user.email}?
-                                  This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUser(user.email)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )) || (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      No users found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
+        <CardContent className="p-6">
+          <UsersDataTable
+            data={usersData?.users || []}
+            loading={isLoading}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={usersData?.total || 0}
+            searchTerm={searchTerm}
+            onPageChange={setCurrentPage}
+            onSearchChange={setSearchTerm}
+            onViewDetails={handleViewUserDetails}
+            onDelete={handleDeleteUser}
+          />
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <div className="text-sm text-muted-foreground">
-            Showing {currentPage * pageSize + 1} to{" "}
-            {Math.min((currentPage + 1) * pageSize, usersData?.total || 0)} of{" "}
-            {usersData?.total || 0} users
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-              disabled={currentPage === 0}
-            >
-              <IconChevronLeft className="h-4 w-4" />
-              Previous
-            </Button>
-            <span className="text-sm">
-              Page {currentPage + 1} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
-              }
-              disabled={currentPage >= totalPages - 1}
-            >
-              Next
-              <IconChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* User Details Drawer */}
       <Drawer
