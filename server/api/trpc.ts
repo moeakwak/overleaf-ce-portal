@@ -1,4 +1,5 @@
 import { initTRPC } from "@trpc/server";
+import SuperJSON from "superjson";
 import type { Session } from "@/lib/auth";
 
 type CreateContextOptions = {
@@ -26,7 +27,9 @@ export const createTRPCContext = async (
 
 export type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
-const t = initTRPC.context<TRPCContext>().create();
+const t = initTRPC.context<TRPCContext>().create({
+  transformer: SuperJSON,
+});
 
 export const router = t.router;
 export const publicProcedure = t.procedure;

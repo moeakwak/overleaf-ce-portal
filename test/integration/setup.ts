@@ -15,7 +15,7 @@ console.log("- SHARELATEX_CONTAINER:", process.env.SHARELATEX_CONTAINER);
 
 // Set NODE_ENV to test if not set
 if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = "test";
+  Object.assign(process.env, { NODE_ENV: "test" });
 }
 
 // Export a helper to verify env is available

@@ -6,7 +6,6 @@ export default defineConfig({
     environment: "node",
     globals: true,
     setupFiles: ["./test/integration/setup.ts"],
-    timeout: 30000, // Longer timeout for integration tests
     include: ["test/integration/**/*.{test,spec}.ts"],
     pool: "forks", // Use separate process for each test
     poolOptions: {

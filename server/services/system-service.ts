@@ -73,7 +73,7 @@ export class SystemService {
         },
         lastChecked,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         overall: "error",
         components: {
@@ -208,7 +208,7 @@ export class SystemService {
             timeout: 60000,
           },
         );
-      } catch (error) {
+      } catch (_error) {
         // TeX Live check might not be available, ignore errors
       }
 

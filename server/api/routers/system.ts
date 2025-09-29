@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure, router } from "../trpc";
 import { SystemService } from "@/server/services/system-service";
+import { protectedProcedure, router } from "../trpc";
 
 const systemService = new SystemService();
 

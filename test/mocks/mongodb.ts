@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { OverleafUser, OverleafProject } from "@/server/types/overleaf";
+import type { OverleafProject, OverleafUser } from "@/server/types/overleaf";
 
 export const mockUser: OverleafUser = {
   _id: "user123",

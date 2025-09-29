@@ -1,10 +1,9 @@
 // @vitest-environment node
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { ProjectService } from "@/server/services/project-service";
 // Import services without mocked env
 import { SystemService } from "@/server/services/system-service";
 import { UserService } from "@/server/services/user-service";
-import { ProjectService } from "@/server/services/project-service";
 
 // Integration tests - these run against real Docker/MongoDB/Redis if available
 describe("System Integration Tests", () => {

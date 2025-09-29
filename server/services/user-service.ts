@@ -3,9 +3,9 @@ import { MongoDBManager } from "../managers/mongodb";
 import { RedisManager } from "../managers/redis";
 import type {
   OverleafUser,
+  ScriptExecutionResult,
   UserCreationOptions,
   UserListOptions,
-  ScriptExecutionResult,
 } from "../types/overleaf";
 
 export class UserService {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DockerCommandExecutor } from "@/server/managers/docker-executor";
 
 // Mock dockerode
@@ -111,7 +111,7 @@ describe("DockerCommandExecutor", () => {
 
     it("should handle execution timeout", async () => {
       const mockStream = {
-        on: vi.fn((event, callback) => {
+        on: vi.fn((_event, _callback) => {
           // Don't call any callbacks to simulate hanging stream
           return mockStream;
         }),

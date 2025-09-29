@@ -6,7 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     setupFiles: ["./test/unit/setup.ts"],
-    timeout: 10000,
+    testTimeout: 10000,
     include: [
       "test/**/*.{test,spec}.ts",
       "!test/integration/**", // Exclude integration tests

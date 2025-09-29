@@ -2,8 +2,8 @@ import { DockerCommandExecutor } from "../managers/docker-executor";
 import { MongoDBManager } from "../managers/mongodb";
 import { RedisManager } from "../managers/redis";
 import type {
-  OverleafProject,
   OverleafDoc,
+  OverleafProject,
   ProjectExportOptions,
   ProjectListOptions,
   ScriptExecutionResult,
@@ -391,7 +391,7 @@ export class ProjectService {
     totalSize: number;
   }> {
     try {
-      let filter: any = {};
+      const filter: any = {};
 
       if (!options.includeInactive) {
         // Only include projects updated in the last 6 months

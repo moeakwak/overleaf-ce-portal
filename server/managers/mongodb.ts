@@ -1,11 +1,11 @@
-import { MongoClient, Db, Collection } from "mongodb";
+import { type Collection, type Db, MongoClient } from "mongodb";
 import { env } from "@/lib/env";
 import type {
-  OverleafUser,
-  OverleafProject,
   OverleafDoc,
-  UserListOptions,
+  OverleafProject,
+  OverleafUser,
   ProjectListOptions,
+  UserListOptions,
 } from "../types/overleaf";
 
 export class MongoDBManager {

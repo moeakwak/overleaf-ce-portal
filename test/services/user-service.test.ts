@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { mockUser, mockMongoManager } from "../mocks/mongodb";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   mockDockerExecutor,
-  mockSuccessResult,
   mockErrorResult,
+  mockSuccessResult,
 } from "../mocks/docker";
+import { mockMongoManager, mockUser } from "../mocks/mongodb";
 import { mockRedisManager, mockSessionData } from "../mocks/redis";
 
 // Mock the managers before importing UserService
@@ -30,7 +30,7 @@ vi.mock("@/server/managers/redis", () => ({
 const { UserService } = await import("@/server/services/user-service");
 
 describe("UserService", () => {
-  let userService: UserService;
+  let userService: InstanceType<typeof UserService>;
 
   beforeEach(() => {
     vi.clearAllMocks();

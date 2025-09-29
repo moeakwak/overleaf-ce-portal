@@ -60,7 +60,7 @@ export class DockerCommandExecutor {
       });
 
       // Start execution with timeout
-      const stream = await exec.start({ Demux: true });
+      const stream = (await exec.start({})) as any;
 
       return new Promise((resolve, reject) => {
         let stdout = "";
@@ -68,7 +68,7 @@ export class DockerCommandExecutor {
 
         const timeout = options.timeout || 30000; // 30s default timeout
         const timer = setTimeout(() => {
-          stream.destroy();
+          stream?.destroy?.();
           reject(new Error(`Command execution timed out after ${timeout}ms`));
         }, timeout);
 

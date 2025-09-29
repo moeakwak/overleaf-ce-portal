@@ -61,7 +61,7 @@ export const OverleafDocSchema = z.object({
   project_id: z.string(),
   rev: z.number(),
   lines: z.array(z.string()),
-  ranges: z.record(z.any()).default({}),
+  ranges: z.record(z.string(), z.any()).default({}),
   version: z.number(),
 });
 
@@ -109,4 +109,6 @@ export interface ProjectListOptions {
   offset?: number;
   ownerId?: string;
   nameFilter?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }

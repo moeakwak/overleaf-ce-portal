@@ -43,7 +43,6 @@ export class RedisManager {
     try {
       this.client = new Redis(env.REDIS_URL, {
         maxRetriesPerRequest: 3,
-        retryDelayOnFailover: 100,
         connectTimeout: 10000,
         commandTimeout: 5000,
         // Read-only mode for safety
