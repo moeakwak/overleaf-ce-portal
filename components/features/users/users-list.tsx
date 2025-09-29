@@ -33,7 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { UsersDataTable } from "@/components/users-table/data-table";
+import { UsersDataTable } from "./users-table/data-table";
 import { trpc } from "@/lib/trpc/client";
 
 export function UsersList() {

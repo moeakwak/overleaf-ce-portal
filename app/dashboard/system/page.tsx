@@ -1,40 +1,20 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
-import { SystemMonitor } from "@/components/system-monitor";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SystemMonitor } from "@/components/features/system/system-monitor";
 
 export default function SystemPage() {
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-4">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="px-4 lg:px-6">
-                <div className="flex flex-col gap-2">
-                  <h1 className="text-2xl font-semibold">System Monitoring</h1>
-                  <p className="text-muted-foreground">
-                    Monitor system health, check service status, and view system
-                    statistics.
-                  </p>
-                </div>
-              </div>
-              <SystemMonitor />
-            </div>
-          </div>
+    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <div className="px-4 lg:px-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold">System Monitoring</h1>
+          <p className="text-muted-foreground">
+            Monitor system health, check service status, and view system
+            statistics.
+          </p>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+      <SystemMonitor />
+    </div>
   );
 }

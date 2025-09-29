@@ -26,3 +26,4 @@ export function TRPCProvider({ children }: { children: ReactNode }) {
     </trpc.Provider>
   );
 }
+

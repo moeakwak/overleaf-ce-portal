@@ -9,7 +9,7 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ProjectsDataTable } from "@/components/projects-table/data-table";
+import { ProjectsDataTable } from "./projects-table/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
