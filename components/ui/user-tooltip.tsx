@@ -13,6 +13,7 @@ interface UserInfo {
   email: string;
   first_name?: string;
   last_name?: string;
+  lastLoggedIn?: Date | string;
 }
 
 interface UserTooltipProps {
@@ -28,11 +29,16 @@ export function UserTooltip({ user, children, side = "top" }: UserTooltipProps) 
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent side={side}>
           <div className="space-y-1">
-            <div className="font-medium">{getUserFullName(user)}</div>
+            <div className="font-medium">{getUserDisplayName(user)}</div>
             <div className="text-xs text-muted-foreground">{user.email}</div>
             <div className="text-xs text-muted-foreground">
               ID: {formatUserId(user._id)}
             </div>
+            {user.lastLoggedIn && (
+              <div className="text-xs text-muted-foreground">
+                Last login: {new Date(user.lastLoggedIn).toLocaleString()}
+              </div>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>
@@ -65,11 +71,16 @@ export function CollaboratorTooltip({
                 <div className="space-y-1">
                   {readWriteUsers.map((user) => (
                     <div key={user._id} className="text-xs">
-                      <div className="font-medium">{getUserFullName(user)}</div>
+                      <div className="font-medium">{getUserDisplayName(user)}</div>
                       <div className="text-muted-foreground">{user.email}</div>
                       <div className="text-muted-foreground">
                         ID: {formatUserId(user._id)}
                       </div>
+                      {user.lastLoggedIn && (
+                        <div className="text-muted-foreground">
+                          Last login: {new Date(user.lastLoggedIn).toLocaleString()}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -83,11 +94,16 @@ export function CollaboratorTooltip({
                 <div className="space-y-1">
                   {readOnlyUsers.map((user) => (
                     <div key={user._id} className="text-xs">
-                      <div className="font-medium">{getUserFullName(user)}</div>
+                      <div className="font-medium">{getUserDisplayName(user)}</div>
                       <div className="text-muted-foreground">{user.email}</div>
                       <div className="text-muted-foreground">
                         ID: {formatUserId(user._id)}
                       </div>
+                      {user.lastLoggedIn && (
+                        <div className="text-muted-foreground">
+                          Last login: {new Date(user.lastLoggedIn).toLocaleString()}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

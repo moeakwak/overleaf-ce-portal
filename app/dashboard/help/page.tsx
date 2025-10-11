@@ -91,14 +91,12 @@ export default function HelpPage() {
               <IconBug className="h-5 w-5" />
               Report an Issue
             </CardTitle>
-            <CardDescription>
-              Found a bug? Let us know!
-            </CardDescription>
+            <CardDescription>Found a bug? Let us know!</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              If you've encountered a bug or issue, please report it through
-              our GitHub repository or contact support.
+              If you've encountered a bug or issue, please report it through our
+              GitHub repository or contact support.
             </p>
             <Button variant="outline" className="w-full">
               <IconBug className="mr-2 h-4 w-4" />
@@ -113,9 +111,7 @@ export default function HelpPage() {
               <IconMail className="h-5 w-5" />
               Contact Support
             </CardTitle>
-            <CardDescription>
-              Need direct assistance?
-            </CardDescription>
+            <CardDescription>Need direct assistance?</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">

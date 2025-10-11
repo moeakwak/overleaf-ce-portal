@@ -9,8 +9,8 @@ export default function ProjectsPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold">Project Management</h1>
           <p className="text-muted-foreground">
-            View and manage Overleaf projects, export data, and monitor
-            project activity.
+            View and manage Overleaf projects, export data, and monitor project
+            activity.
           </p>
         </div>
       </div>

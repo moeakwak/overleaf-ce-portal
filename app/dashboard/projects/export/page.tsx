@@ -37,8 +37,7 @@ export default function ProjectsExportPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              This page will provide project data export capabilities
-              including:
+              This page will provide project data export capabilities including:
             </p>
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>• Individual project export</li>

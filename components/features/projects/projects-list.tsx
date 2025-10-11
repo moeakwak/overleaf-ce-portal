@@ -9,7 +9,6 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ProjectsDataTable } from "./projects-table/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc/client";
+import { ProjectsDataTable } from "./projects-table/data-table";
 
 export function ProjectsList() {
   const [currentPage, setCurrentPage] = useState(0);

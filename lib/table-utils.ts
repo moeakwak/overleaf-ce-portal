@@ -51,17 +51,21 @@ export function getUserDisplayName(user: {
 }
 
 /**
- * Get user full name or fallback text
+ * Get user full name or fallback to email username
  */
 export function getUserFullName(
   user: {
     first_name?: string;
     last_name?: string;
+    email?: string;
   },
   fallbackText = "No name provided",
 ): string {
   if (user.first_name && user.last_name) {
     return `${user.first_name} ${user.last_name}`;
+  }
+  if (user.email) {
+    return user.email.split("@")[0];
   }
   return fallbackText;
 }

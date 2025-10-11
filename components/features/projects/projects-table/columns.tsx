@@ -53,12 +53,14 @@ export type Project = {
     email: string;
     first_name?: string;
     last_name?: string;
+    lastLoggedIn?: Date | string;
   };
   collaboratorUsers?: Array<{
     _id: string;
     email: string;
     first_name?: string;
     last_name?: string;
+    lastLoggedIn?: Date | string;
     type: "read-write" | "read-only";
   }>;
 };

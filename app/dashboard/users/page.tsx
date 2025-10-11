@@ -9,8 +9,7 @@ export default function UsersPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold">User Management</h1>
           <p className="text-muted-foreground">
-            Manage users, create new accounts, and monitor user
-            activity.
+            Manage users, create new accounts, and monitor user activity.
           </p>
         </div>
       </div>

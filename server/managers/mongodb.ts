@@ -241,12 +241,13 @@ export class MongoDBManager {
    * List projects with pagination and filtering
    */
   public async listProjects(options: ProjectListOptions = {}): Promise<{
-    projects: OverleafProject[];
+    projects: any[];
     total: number;
     hasMore: boolean;
   }> {
     try {
       const collection = await this.getProjectsCollection();
+      const usersCollection = await this.getUsersCollection();
       const { limit = 50, offset = 0, ownerId, nameFilter } = options;
 
       // Build filter
@@ -268,8 +269,77 @@ export class MongoDBManager {
         collection.countDocuments(filter),
       ]);
 
+      // Enrich projects with user information
+      const enrichedProjects = await Promise.all(
+        projects.map(async (project) => {
+          const enrichedProject: any = { ...project };
+
+          // Get owner user info
+          if (project.owner_ref) {
+            const ownerUser = await usersCollection.findOne({
+              _id: project.owner_ref,
+            });
+            if (ownerUser) {
+              enrichedProject.ownerUser = {
+                _id: ownerUser._id,
+                email: ownerUser.email,
+                first_name: ownerUser.first_name,
+                last_name: ownerUser.last_name,
+                lastLoggedIn: ownerUser.lastLoggedIn,
+              };
+            }
+          }
+
+          // Get collaborator user info
+          const collaboratorUsers = [];
+          if (project.collaberator_refs && project.collaberator_refs.length > 0) {
+            const collabUsers = await usersCollection
+              .find({
+                _id: { $in: project.collaberator_refs },
+              })
+              .toArray();
+
+            for (const user of collabUsers) {
+              collaboratorUsers.push({
+                _id: user._id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                lastLoggedIn: user.lastLoggedIn,
+                type: "read-write" as const,
+              });
+            }
+          }
+
+          if (project.readOnly_refs && project.readOnly_refs.length > 0) {
+            const readOnlyUsers = await usersCollection
+              .find({
+                _id: { $in: project.readOnly_refs },
+              })
+              .toArray();
+
+            for (const user of readOnlyUsers) {
+              collaboratorUsers.push({
+                _id: user._id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                lastLoggedIn: user.lastLoggedIn,
+                type: "read-only" as const,
+              });
+            }
+          }
+
+          if (collaboratorUsers.length > 0) {
+            enrichedProject.collaboratorUsers = collaboratorUsers;
+          }
+
+          return enrichedProject;
+        })
+      );
+
       return {
-        projects,
+        projects: enrichedProjects,
         total,
         hasMore: offset + projects.length < total,
       };

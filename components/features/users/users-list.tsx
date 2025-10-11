@@ -33,8 +33,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { UsersDataTable } from "./users-table/data-table";
 import { trpc } from "@/lib/trpc/client";
+import { UsersDataTable } from "./users-table/data-table";
 
 export function UsersList() {
   const [currentPage, setCurrentPage] = useState(0);
