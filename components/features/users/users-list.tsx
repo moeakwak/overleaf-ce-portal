@@ -273,6 +273,7 @@ export function UsersList() {
       <Drawer
         open={userDetailsDrawerOpen}
         onOpenChange={setUserDetailsDrawerOpen}
+        direction="right"
       >
         <DrawerContent>
           <DrawerHeader>

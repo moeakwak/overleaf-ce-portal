@@ -229,6 +229,7 @@ export function ProjectsList() {
       <Drawer
         open={projectDetailsDrawerOpen}
         onOpenChange={setProjectDetailsDrawerOpen}
+        direction="right"
       >
         <DrawerContent>
           <DrawerHeader>
