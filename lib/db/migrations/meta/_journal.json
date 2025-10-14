@@ -8,6 +8,13 @@
       "when": 1759053174415,
       "tag": "0000_dear_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759053174416,
+      "tag": "0001_add_role_to_user",
+      "breakpoints": true
     }
   ]
 }

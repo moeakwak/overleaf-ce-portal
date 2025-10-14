@@ -1,6 +1,6 @@
 "use client";
 
-import { IconDownload, IconTool } from "@tabler/icons-react";
+import { IconReport, IconTool } from "@tabler/icons-react";
 import {
   Card,
   CardContent,
@@ -9,17 +9,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function ProjectsExportPage() {
+export default function AdminSystemLogsPage() {
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <IconDownload className="h-6 w-6" />
-            Project Export
+            <IconReport className="h-6 w-6" />
+            System Logs
           </h1>
           <p className="text-muted-foreground">
-            Export project data and backup projects.
+            View and analyze system logs and activity.
           </p>
         </div>
       </div>
@@ -32,19 +32,20 @@ export default function ProjectsExportPage() {
               Under Construction
             </CardTitle>
             <CardDescription>
-              Project export functionality is coming soon.
+              This page is currently under development.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              This page will provide project data export capabilities including:
+              System logs functionality will be available in a future version.
+              This page will allow you to:
             </p>
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <li>• Individual project export</li>
-              <li>• Bulk project backup</li>
-              <li>• Project archives in ZIP format</li>
-              <li>• Filtered export by date range</li>
-              <li>• Export progress tracking</li>
+              <li>• View system logs in real-time</li>
+              <li>• Filter logs by severity level</li>
+              <li>• Search through historical logs</li>
+              <li>• Export logs for analysis</li>
+              <li>• Set up log alerts and notifications</li>
             </ul>
           </CardContent>
         </Card>

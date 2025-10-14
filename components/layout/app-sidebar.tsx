@@ -27,67 +27,73 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import type { Session } from "@/lib/auth";
 
-const data = {
-  user: {
-    name: "Admin",
-    email: "admin@overleaf.local",
-    avatar: "/avatars/admin.jpg",
-  },
+const navigation = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/dashboard",
+      url: "/admin/dashboard",
       icon: IconDashboard,
     },
     {
       title: "Users",
-      url: "/dashboard/users",
+      url: "/admin/users",
       icon: IconUsers,
     },
     {
       title: "Projects",
-      url: "/dashboard/projects",
+      url: "/admin/projects",
       icon: IconFolder,
     },
     {
       title: "System",
-      url: "/dashboard/system",
+      url: "/admin/system",
       icon: IconDatabase,
     },
   ],
   navDocuments: [
     {
       name: "User Export",
-      url: "/dashboard/users/export",
+      url: "/admin/users/export",
       icon: IconFileDescription,
     },
     {
       name: "Project Export",
-      url: "/dashboard/projects/export",
+      url: "/admin/projects/export",
       icon: IconFolder,
     },
     {
       name: "System Logs",
-      url: "/dashboard/system/logs",
+      url: "/admin/system/logs",
       icon: IconReport,
     },
   ],
   navSecondary: [
     {
       title: "Settings",
-      url: "/dashboard/settings",
+      url: "/admin/settings",
       icon: IconSettings,
     },
     {
       title: "Help",
-      url: "/dashboard/help",
+      url: "/admin/help",
       icon: IconHelp,
     },
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  session,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { session: Session }) {
+  const user = {
+    name: session.user.name ?? "Administrator",
+    email: session.user.email,
+    avatar: session.user.image ?? null,
+    role: session.user.role,
+  };
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -97,7 +103,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href="/dashboard">
+              <Link href="/admin/dashboard">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">
                   Overleaf CE Portal
@@ -108,12 +114,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.navDocuments} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={navigation.navMain} />
+        <NavDocuments items={navigation.navDocuments} />
+        <NavSecondary items={navigation.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

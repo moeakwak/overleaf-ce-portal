@@ -44,7 +44,7 @@ export function SystemMonitor() {
   });
 
   useEffect(() => {
-    // 设置模拟指标，避免 hydration 不匹配
+    // Initialize mock metrics to avoid hydration mismatch
     setMockMetrics({
       cpu: Math.floor(Math.random() * 100),
       memory: Math.floor(Math.random() * 100),

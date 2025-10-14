@@ -1,7 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 import { db } from "./db";
 import { env } from "./env";
+
+export const USER_ROLES = ["user", "super-admin"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -12,6 +16,16 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        required: true,
+        defaultValue: "user",
+        input: false,
+      },
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
@@ -19,6 +33,7 @@ export const auth = betterAuth({
   socialProviders: {
     // Add social providers as needed
   },
+  plugins: [nextCookies()],
 });
 
 export type Session = typeof auth.$Infer.Session;

@@ -48,7 +48,7 @@ export function RecentActivity() {
             <CardDescription>Latest user registrations</CardDescription>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/users">View All</Link>
+            <Link href="/admin/users">View All</Link>
           </Button>
         </CardHeader>
         <CardContent>
@@ -108,7 +108,7 @@ export function RecentActivity() {
             <CardDescription>Latest project activity</CardDescription>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/projects">View All</Link>
+            <Link href="/admin/projects">View All</Link>
           </Button>
         </CardHeader>
         <CardContent>

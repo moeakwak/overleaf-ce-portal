@@ -1,13 +1,17 @@
 "use client";
 
+import type * as React from "react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import type { Session } from "@/lib/auth";
 
-export default function DashboardLayout({
+export function AdminLayoutShell({
   children,
+  session,
 }: {
   children: React.ReactNode;
+  session: Session;
 }) {
   return (
     <SidebarProvider
@@ -18,7 +22,7 @@ export default function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" session={session} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">

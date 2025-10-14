@@ -1,5 +1,12 @@
 import { createEnv } from "@t3-oss/env-nextjs";
+import { config as loadEnv } from "dotenv";
 import { z } from "zod";
+
+// Load environment variables before validation
+// This is crucial for non-Next.js contexts (like drizzle-kit)
+// Next.js automatically loads .env files, but standalone scripts don't
+loadEnv({ path: ".env.local" });
+loadEnv();
 
 export const env = createEnv({
   /**
@@ -9,6 +16,14 @@ export const env = createEnv({
   server: {
     // Better Auth Configuration
     BETTER_AUTH_SECRET: z.string().min(1, "Better Auth secret is required"),
+    INITIAL_SUPERADMIN_EMAIL: z
+      .string()
+      .email("Initial super admin email must be valid")
+      .default("admin@example.com"),
+    INITIAL_SUPERADMIN_PASSWORD: z
+      .string()
+      .min(8, "Initial super admin password must be at least 8 characters")
+      .default("ChangeMe123!"),
 
     // Database Configuration
     DATABASE_URL: z.string().min(1, "Database URL is required"),
@@ -42,6 +57,8 @@ export const env = createEnv({
   runtimeEnv: {
     // Server-side variables
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    INITIAL_SUPERADMIN_EMAIL: process.env.INITIAL_SUPERADMIN_EMAIL,
+    INITIAL_SUPERADMIN_PASSWORD: process.env.INITIAL_SUPERADMIN_PASSWORD,
     DATABASE_URL: process.env.DATABASE_URL,
     DOCKER_SOCKET_PATH: process.env.DOCKER_SOCKET_PATH,
     SHARELATEX_CONTAINER: process.env.SHARELATEX_CONTAINER,

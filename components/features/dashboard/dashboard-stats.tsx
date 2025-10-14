@@ -21,10 +21,10 @@ export function DashboardStats() {
   const [currentTime, setCurrentTime] = useState<string>("");
 
   useEffect(() => {
-    // 设置当前时间，避免 hydration 不匹配
+    // Initialize the current time to avoid hydration mismatch
     setCurrentTime(new Date().toLocaleTimeString());
 
-    // 可选：每分钟更新一次时间
+    // Optional: update the time every minute
     const interval = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString());
     }, 60000);
