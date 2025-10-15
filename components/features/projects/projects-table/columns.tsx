@@ -1,21 +1,10 @@
 "use client";
 
-import {
-  IconDownload,
-  IconEye,
-  IconSettings,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconDownload, IconEye, IconUsers } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -109,28 +98,57 @@ interface ActionsProps {
 }
 
 function ActionsCell({ project, onViewDetails, onExport }: ActionsProps) {
+  const readWriteUsers =
+    project.collaboratorUsers?.filter((user) => user.type === "read-write") ??
+    [];
+  const readOnlyUsers =
+    project.collaboratorUsers?.filter((user) => user.type === "read-only") ??
+    [];
+  const collaboratorCount =
+    (project.collaberator_refs?.length || 0) +
+    (project.readOnly_refs?.length || 0);
+  const detailedCollaboratorCount = project.collaboratorUsers?.length ?? 0;
+  const hasCollaborators =
+    collaboratorCount > 0 || detailedCollaboratorCount > 0;
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <IconSettings className="h-4 w-4" />
+    <div className="flex items-center justify-end gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="View project details"
+        onClick={() => onViewDetails(project)}
+      >
+        <IconEye className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Export project"
+        onClick={() => onExport(project)}
+      >
+        <IconDownload className="h-4 w-4" />
+      </Button>
+      {hasCollaborators ? (
+        <CollaboratorTooltip
+          readWriteUsers={readWriteUsers}
+          readOnlyUsers={readOnlyUsers}
+        >
+          <Button variant="ghost" size="icon" aria-label="View collaborators">
+            <IconUsers className="h-4 w-4" />
+          </Button>
+        </CollaboratorTooltip>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="View collaborators"
+          disabled
+        >
+          <IconUsers className="h-4 w-4" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onViewDetails(project)}>
-          <IconEye className="mr-2 h-4 w-4" />
-          View Details
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onExport(project)}>
-          <IconDownload className="mr-2 h-4 w-4" />
-          Export Project
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <IconUsers className="mr-2 h-4 w-4" />
-          View Collaborators
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      )}
+    </div>
   );
 }
 

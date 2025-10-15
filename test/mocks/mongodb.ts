@@ -59,6 +59,8 @@ export const createMockUserRepository = () => ({
   countAdmins: vi.fn(),
   countActiveUsers: vi.fn(),
   countUsersSignedUpAfter: vi.fn(),
+  updateAdminStatus: vi.fn(),
+  setPassword: vi.fn(),
 });
 
 export const createMockProjectRepository = () => ({

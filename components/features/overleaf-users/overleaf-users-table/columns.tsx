@@ -17,36 +17,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   createDateSortingFn,
   formatDateCell,
   formatUserId,
   getUserFullName,
 } from "@/lib/table-utils";
+import type { RouterOutputs } from "@/lib/trpc/client";
 
-export type OverleafUserRow = {
-  _id: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  isAdmin: boolean;
-  lastLoggedIn?: string | Date;
-  loginCount?: number;
-  signUpDate?: string | Date;
-  emails?: Array<{ email: string; createdAt?: string | Date }>;
-  features?: {
-    collaborators?: number;
-    compileTimeout?: number;
-    versioning?: boolean;
-    trackChanges?: boolean;
-  };
-  lastActive?: string | Date;
-};
+export type OverleafUserRow =
+  RouterOutputs["overleafUser"]["list"]["users"][number];
 
 interface ActionsProps {
   user: OverleafUserRow;
@@ -57,52 +36,54 @@ interface ActionsProps {
 
 function ActionsCell({ user, onViewDetails, onEdit, onDelete }: ActionsProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <IconEdit className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onViewDetails(user)}>
-          <IconMail className="mr-2 h-4 w-4" />
-          View Overleaf User
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onEdit(user)}>
-          <IconEdit className="mr-2 h-4 w-4" />
-          Edit Overleaf User
-        </DropdownMenuItem>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <DropdownMenuItem
-              className="text-destructive"
-              onSelect={(e) => e.preventDefault()}
+    <div className="flex items-center justify-end gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onViewDetails(user)}
+        aria-label="View Overleaf User"
+      >
+        <IconMail className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onEdit(user)}
+        aria-label="Edit Overleaf User"
+      >
+        <IconEdit className="h-4 w-4" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive hover:text-destructive"
+            aria-label="Delete Overleaf User"
+          >
+            <IconTrash className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Overleaf User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete Overleaf user {user.email}? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(user.email)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <IconTrash className="mr-2 h-4 w-4" />
-              Delete Overleaf User
-            </DropdownMenuItem>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Overleaf User</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete Overleaf user {user.email}? This
-                action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onDelete(user.email)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DropdownMenuContent>
-    </DropdownMenu>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 

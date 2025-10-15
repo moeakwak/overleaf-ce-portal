@@ -207,53 +207,63 @@ export class PortalUserService {
   public async updatePortalUser(
     input: UpdatePortalUserInput,
   ): Promise<PortalUserWithLinks | null> {
-    return await db.transaction(async (tx) => {
-      if (!input.name && !input.email && !input.role && !input.overleafLinks) {
-        return this.getPortalUserByIdWithConnection(input.id, tx);
-      }
+    const shouldUpdateDetails =
+      typeof input.name === "string" ||
+      typeof input.email === "string" ||
+      typeof input.role === "string";
+    const shouldUpdateLinks = Array.isArray(input.overleafLinks);
 
-      const updateData: Partial<typeof user.$inferInsert> = {};
+    if (!shouldUpdateDetails && !shouldUpdateLinks) {
+      return this.getPortalUserByIdWithConnection(input.id, db);
+    }
 
-      if (typeof input.name === "string") {
-        updateData.name = input.name;
-      }
+    db.transaction((tx) => {
+      if (shouldUpdateDetails) {
+        const updateData: Partial<typeof user.$inferInsert> = {};
 
-      if (typeof input.email === "string") {
-        updateData.email = input.email;
-      }
+        if (typeof input.name === "string") {
+          updateData.name = input.name;
+        }
 
-      if (typeof input.role === "string") {
-        updateData.role = input.role;
-      }
+        if (typeof input.email === "string") {
+          updateData.email = input.email;
+        }
 
-      if (Object.keys(updateData).length > 0) {
-        await tx
-          .update(user)
-          .set({
-            ...updateData,
-            updatedAt: new Date(),
-          })
-          .where(eq(user.id, input.id));
-      }
+        if (typeof input.role === "string") {
+          updateData.role = input.role;
+        }
 
-      if (Array.isArray(input.overleafLinks)) {
-        await tx
-          .delete(portalUserOverleafLink)
-          .where(eq(portalUserOverleafLink.portalUserId, input.id));
-
-        if (input.overleafLinks.length > 0) {
-          await tx.insert(portalUserOverleafLink).values(
-            input.overleafLinks.map((link) => ({
-              portalUserId: input.id,
-              overleafUserId: link.overleafUserId,
-              overleafUserEmail: link.overleafUserEmail,
-            })),
-          );
+        if (Object.keys(updateData).length > 0) {
+          tx.update(user)
+            .set({
+              ...updateData,
+              updatedAt: new Date(),
+            })
+            .where(eq(user.id, input.id))
+            .run();
         }
       }
 
-      return this.getPortalUserByIdWithConnection(input.id, tx);
+      if (shouldUpdateLinks) {
+        tx.delete(portalUserOverleafLink)
+          .where(eq(portalUserOverleafLink.portalUserId, input.id))
+          .run();
+
+        if (input.overleafLinks && input.overleafLinks.length > 0) {
+          tx.insert(portalUserOverleafLink)
+            .values(
+              input.overleafLinks.map((link) => ({
+                portalUserId: input.id,
+                overleafUserId: link.overleafUserId,
+                overleafUserEmail: link.overleafUserEmail,
+              })),
+            )
+            .run();
+        }
+      }
     });
+
+    return this.getPortalUserByIdWithConnection(input.id, db);
   }
 
   public async getPortalUserStats(): Promise<PortalUserStats> {

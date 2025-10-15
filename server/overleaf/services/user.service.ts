@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import type { DockerCommandExecutor } from "../../connectors/docker-executor";
 import type {
   OverleafUser,
@@ -155,53 +156,78 @@ export class OverleafUserService {
   /**
    * Upgrade user features
    */
-  public async upgradeUserFeatures(
+  public async updateAdminStatus(
     email: string,
-    features?: Record<string, unknown>,
+    isAdmin: boolean,
   ): Promise<{
     success: boolean;
-    executionResult: ScriptExecutionResult;
     error?: string;
   }> {
     try {
-      // Check if user exists
       const user = await this.userRepo.findByEmail(email);
       if (!user) {
         return {
           success: false,
           error: "User not found",
-          executionResult: {
-            success: false,
-            stdout: "",
-            stderr: "User not found",
-            exitCode: 1,
-            executionTime: 0,
-          },
         };
       }
 
-      // Execute upgrade-user-features script
-      const executionResult = await this.dockerExecutor.upgradeUserFeatures(
-        email,
-        features,
-      );
+      const updated = await this.userRepo.updateAdminStatus(email, isAdmin);
+      if (!updated) {
+        return {
+          success: false,
+          error: "Failed to update admin status",
+        };
+      }
 
-      return {
-        success: executionResult.success,
-        executionResult,
-        error: executionResult.success ? undefined : executionResult.stderr,
-      };
+      return { success: true };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        executionResult: {
+      };
+    }
+  }
+
+  /**
+   * Set user password directly using bcrypt
+   * This is more reliable than using Docker scripts which don't exist in CE
+   */
+  public async setUserPassword(
+    email: string,
+    password: string,
+  ): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      const user = await this.userRepo.findByEmail(email);
+      if (!user) {
+        return {
           success: false,
-          stdout: "",
-          stderr: error instanceof Error ? error.message : "Unknown error",
-          exitCode: -1,
-          executionTime: 0,
-        },
+          error: "User not found",
+        };
+      }
+
+      // Generate bcrypt hash (same as Overleaf uses)
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Update password in MongoDB
+      const updated = await this.userRepo.setPassword(email, hashedPassword);
+
+      if (!updated) {
+        return {
+          success: false,
+          error: "Failed to update password",
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return {
+        success: false,
+        error: message,
       };
     }
   }

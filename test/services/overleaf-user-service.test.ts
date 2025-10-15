@@ -36,27 +36,19 @@ const projectRepoFactory = vi.fn(() => projectRepoMock);
 const sessionRepoFactory = vi.fn(() => sessionRepoMock);
 
 vi.mock("@/server/overleaf/repositories/user.repository", () => ({
-  OverleafUserRepository: vi
-    .fn()
-    .mockImplementation((instance: OverleafInstance) =>
-      userRepoFactory(instance),
-    ),
+  OverleafUserRepository: vi.fn().mockImplementation(() => userRepoFactory()),
 }));
 
 vi.mock("@/server/overleaf/repositories/project.repository", () => ({
   OverleafProjectRepository: vi
     .fn()
-    .mockImplementation((instance: OverleafInstance) =>
-      projectRepoFactory(instance),
-    ),
+    .mockImplementation(() => projectRepoFactory()),
 }));
 
 vi.mock("@/server/overleaf/repositories/session.repository", () => ({
   OverleafSessionRepository: vi
     .fn()
-    .mockImplementation((instance: OverleafInstance) =>
-      sessionRepoFactory(instance),
-    ),
+    .mockImplementation(() => sessionRepoFactory()),
 }));
 
 beforeAll(async () => {
@@ -167,34 +159,85 @@ describe("OverleafUserService", () => {
     });
   });
 
-  describe("upgradeUserFeatures", () => {
-    it("invokes docker executor when user exists", async () => {
+  describe("updateAdminStatus", () => {
+    it("updates admin flag when user exists", async () => {
       userRepoMock.findByEmail.mockResolvedValue(mockUser);
-      dockerExecutorMock.upgradeUserFeatures.mockResolvedValue(
-        mockSuccessResult,
-      );
+      userRepoMock.updateAdminStatus.mockResolvedValue(true);
 
-      const result = await userService.upgradeUserFeatures(mockUser.email, {
-        github: true,
-      });
+      const result = await userService.updateAdminStatus(mockUser.email, true);
 
       expect(result.success).toBe(true);
-      expect(dockerExecutorMock.upgradeUserFeatures).toHaveBeenCalledWith(
+      expect(userRepoMock.updateAdminStatus).toHaveBeenCalledWith(
         mockUser.email,
-        { github: true },
+        true,
       );
+    });
+
+    it("returns error when user not found", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(null);
+
+      const result = await userService.updateAdminStatus(
+        "missing@example.com",
+        true,
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("User not found");
+      expect(userRepoMock.updateAdminStatus).not.toHaveBeenCalled();
+    });
+
+    it("returns error when repository update fails", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
+      userRepoMock.updateAdminStatus.mockResolvedValue(false);
+
+      const result = await userService.updateAdminStatus(mockUser.email, true);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Failed to update admin status");
+    });
+  });
+
+  describe("setUserPassword", () => {
+    it("updates password using bcrypt and repository", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
+      userRepoMock.setPassword.mockResolvedValue(true);
+
+      const result = await userService.setUserPassword(
+        mockUser.email,
+        "newPassword123",
+      );
+
+      expect(result.success).toBe(true);
+      expect(userRepoMock.setPassword).toHaveBeenCalledWith(
+        mockUser.email,
+        expect.stringMatching(/^\$2[aby]\$.{56}$/), // bcrypt hash pattern
+      );
+    });
+
+    it("returns error when repository update fails", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
+      userRepoMock.setPassword.mockResolvedValue(false);
+
+      const result = await userService.setUserPassword(
+        mockUser.email,
+        "newPassword123",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Failed to update password");
     });
 
     it("returns error when user missing", async () => {
       userRepoMock.findByEmail.mockResolvedValue(null);
 
-      const result = await userService.upgradeUserFeatures(
+      const result = await userService.setUserPassword(
         "missing@example.com",
+        "newPassword123",
       );
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("User not found");
-      expect(dockerExecutorMock.upgradeUserFeatures).not.toHaveBeenCalled();
+      expect(userRepoMock.setPassword).not.toHaveBeenCalled();
     });
   });
 

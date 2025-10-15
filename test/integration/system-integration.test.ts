@@ -151,6 +151,97 @@ describe("System Integration Tests", () => {
 
       console.log("User Stats:", stats);
     });
+
+    it("should update admin status", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
+      const health = await systemService.getSystemHealth();
+      if (health.components.docker.status === "error") {
+        console.log("Skipping admin status test - Docker not available");
+        return;
+      }
+
+      const testEmail = `test-admin-${Date.now()}@example.com`;
+
+      // Create a test user
+      const createResult = await userService.createUser({
+        email: testEmail,
+        isAdmin: false,
+      });
+
+      if (createResult.success) {
+        // Update admin status to true
+        const updateResult = await userService.updateAdminStatus(
+          testEmail,
+          true,
+        );
+        expect(updateResult.success).toBe(true);
+
+        // Verify the change
+        const user = await userService.getUserByEmail(testEmail);
+        expect(user?.isAdmin).toBe(true);
+
+        // Update admin status back to false
+        const updateResult2 = await userService.updateAdminStatus(
+          testEmail,
+          false,
+        );
+        expect(updateResult2.success).toBe(true);
+
+        // Verify the change
+        const user2 = await userService.getUserByEmail(testEmail);
+        expect(user2?.isAdmin).toBe(false);
+
+        // Clean up
+        await userService.deleteUser(testEmail, true);
+        console.log("Admin status update test passed");
+      } else {
+        console.log("Skipping admin status test - user creation failed");
+      }
+    });
+
+    it("should set user password", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
+      const health = await systemService.getSystemHealth();
+      if (health.components.docker.status === "error") {
+        console.log("Skipping password test - Docker not available");
+        return;
+      }
+
+      const testEmail = `test-password-${Date.now()}@example.com`;
+      const newPassword = "newSecurePassword123";
+
+      // Create a test user
+      const createResult = await userService.createUser({
+        email: testEmail,
+        isAdmin: false,
+      });
+
+      if (createResult.success) {
+        // Set a new password
+        const setPasswordResult = await userService.setUserPassword(
+          testEmail,
+          newPassword,
+        );
+        expect(setPasswordResult.success).toBe(true);
+
+        // Verify user still exists (password was updated in DB)
+        const user = await userService.getUserByEmail(testEmail);
+        expect(user).toBeDefined();
+        expect(user?.email).toBe(testEmail);
+
+        // Clean up
+        await userService.deleteUser(testEmail, true);
+        console.log("Password update test passed");
+      } else {
+        console.log("Skipping password test - user creation failed");
+      }
+    });
   });
 
   describe("Project Operations Integration", () => {

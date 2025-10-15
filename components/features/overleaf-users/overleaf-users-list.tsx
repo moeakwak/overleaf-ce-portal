@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  IconKey,
   IconLoader,
   IconPlus,
   IconShield,
@@ -52,13 +53,8 @@ export function OverleafUsersList() {
   );
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<OverleafUserRow | null>(null);
-  const [editFeatures, setEditFeatures] = useState({
-    collaborators: 0,
-    compileTimeout: 180,
-    versioning: false,
-    trackChanges: false,
-  });
-  const [collaboratorsUnlimited, setCollaboratorsUnlimited] = useState(false);
+  const [editIsAdmin, setEditIsAdmin] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [newUser, setNewUser] = useState({
     email: "",
     firstName: "",
@@ -112,19 +108,29 @@ export function OverleafUsersList() {
     },
   });
 
-  const upgradeFeaturesMutation = trpc.overleafUser.upgradeFeatures.useMutation(
-    {
+  const updateAdminStatusMutation =
+    trpc.overleafUser.updateAdminStatus.useMutation({
       onSuccess: () => {
-        toast.success("Overleaf user features updated successfully");
-        setEditDrawerOpen(false);
-        setEditingUser(null);
+        toast.success("Admin status updated successfully");
+        setEditingUser((prev) =>
+          prev ? { ...prev, isAdmin: editIsAdmin } : prev,
+        );
         refetch();
       },
       onError: (error) => {
         toast.error(error.message);
       },
+    });
+
+  const setPasswordMutation = trpc.overleafUser.setPassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password updated successfully");
+      setNewPassword("");
     },
-  );
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const handleCreateUser = () => {
     if (!newUser.email) {
@@ -145,49 +151,36 @@ export function OverleafUsersList() {
 
   const handleEditUser = (user: OverleafUserRow) => {
     setEditingUser(user);
-    const collaborators = user.features?.collaborators ?? 0;
-    setEditFeatures({
-      collaborators: collaborators === -1 ? 0 : collaborators,
-      compileTimeout: user.features?.compileTimeout ?? 180,
-      versioning: Boolean(user.features?.versioning),
-      trackChanges: Boolean(user.features?.trackChanges),
-    });
-    setCollaboratorsUnlimited(collaborators === -1);
+    setEditIsAdmin(Boolean(user.isAdmin));
+    setNewPassword("");
     setEditDrawerOpen(true);
   };
 
   useEffect(() => {
     if (!editDrawerOpen) {
       setEditingUser(null);
-      setEditFeatures({
-        collaborators: 0,
-        compileTimeout: 180,
-        versioning: false,
-        trackChanges: false,
-      });
-      setCollaboratorsUnlimited(false);
+      setEditIsAdmin(false);
+      setNewPassword("");
     }
   }, [editDrawerOpen]);
 
-  const handleSaveFeatures = () => {
+  const handleSaveAdminStatus = () => {
     if (!editingUser) return;
-    const collaboratorsValue = collaboratorsUnlimited
-      ? -1
-      : Number.isFinite(editFeatures.collaborators)
-        ? Math.max(0, Math.floor(editFeatures.collaborators))
-        : 0;
-    const compileTimeoutValue = Number.isFinite(editFeatures.compileTimeout)
-      ? Math.max(60, Math.floor(editFeatures.compileTimeout))
-      : 180;
-
-    upgradeFeaturesMutation.mutate({
+    updateAdminStatusMutation.mutate({
       email: editingUser.email,
-      features: {
-        collaborators: collaboratorsValue,
-        compileTimeout: compileTimeoutValue,
-        versioning: editFeatures.versioning,
-        trackChanges: editFeatures.trackChanges,
-      },
+      isAdmin: editIsAdmin,
+    });
+  };
+
+  const handleSetPassword = () => {
+    if (!editingUser) return;
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+    setPasswordMutation.mutate({
+      email: editingUser.email,
+      password: newPassword,
     });
   };
 
@@ -455,62 +448,7 @@ export function OverleafUsersList() {
                   </div>
                 </div>
 
-                {/* Features */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium">
-                    Features & Permissions
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Collaborators</div>
-                      <div className="font-medium">
-                        {selectedUser.features?.collaborators === -1
-                          ? "Unlimited"
-                          : selectedUser.features?.collaborators || "Limited"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">
-                        Compile Timeout
-                      </div>
-                      <div className="font-medium">
-                        {selectedUser.features?.compileTimeout || 180}s
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Versioning</div>
-                      <div className="font-medium">
-                        <Badge
-                          variant={
-                            selectedUser.features?.versioning
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {selectedUser.features?.versioning
-                            ? "Enabled"
-                            : "Disabled"}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Track Changes</div>
-                      <div className="font-medium">
-                        <Badge
-                          variant={
-                            selectedUser.features?.trackChanges
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {selectedUser.features?.trackChanges
-                            ? "Enabled"
-                            : "Disabled"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {/* CE-specific feature fields intentionally omitted. */}
 
                 {/* Email Addresses */}
                 {selectedUser.emails && selectedUser.emails.length > 0 && (
@@ -573,11 +511,9 @@ export function OverleafUsersList() {
                     <span className="font-medium">{editingUser.email}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Role</span>
-                    <Badge
-                      variant={editingUser.isAdmin ? "default" : "secondary"}
-                    >
-                      {editingUser.isAdmin ? "Admin" : "User"}
+                    <span className="text-muted-foreground">Admin</span>
+                    <Badge variant={editIsAdmin ? "default" : "secondary"}>
+                      {editIsAdmin ? "Admin" : "User"}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
@@ -590,141 +526,79 @@ export function OverleafUsersList() {
               <Separator />
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Versioning</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Allow the user to access document history snapshots.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={editFeatures.versioning}
-                    onCheckedChange={(value) =>
-                      setEditFeatures((prev) => ({
-                        ...prev,
-                        versioning: value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Track Changes</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Enable collaborative track-changes mode for this user.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={editFeatures.trackChanges}
-                    onCheckedChange={(value) =>
-                      setEditFeatures((prev) => ({
-                        ...prev,
-                        trackChanges: value,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-medium">Collaborators</h4>
+                      <h4 className="text-sm font-medium">
+                        Administrator Access
+                      </h4>
                       <p className="text-xs text-muted-foreground">
-                        Control how many collaborators this user can invite.
+                        Toggle to grant or remove administrator privileges.
                       </p>
                     </div>
                     <Switch
-                      checked={collaboratorsUnlimited}
-                      onCheckedChange={(value) => {
-                        setCollaboratorsUnlimited(value);
-                        if (value) {
-                          setEditFeatures((prev) => ({
-                            ...prev,
-                            collaborators: 0,
-                          }));
-                        }
-                      }}
+                      checked={editIsAdmin}
+                      onCheckedChange={setEditIsAdmin}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="overleaf-collaborators" className="text-sm">
-                      {collaboratorsUnlimited
-                        ? "Unlimited collaborators enabled"
-                        : "Maximum collaborators"}
-                    </Label>
-                    <Input
-                      id="overleaf-collaborators"
-                      type="number"
-                      min={0}
-                      disabled={collaboratorsUnlimited}
-                      value={
-                        collaboratorsUnlimited ? "" : editFeatures.collaborators
-                      }
-                      onChange={(event) =>
-                        setEditFeatures((prev) => {
-                          const parsed = Number.parseInt(
-                            event.target.value,
-                            10,
-                          );
-                          return {
-                            ...prev,
-                            collaborators: Number.isNaN(parsed)
-                              ? prev.collaborators
-                              : parsed,
-                          };
-                        })
-                      }
-                    />
-                  </div>
+                  <Button
+                    onClick={handleSaveAdminStatus}
+                    disabled={
+                      updateAdminStatusMutation.isPending || !editingUser
+                    }
+                  >
+                    {updateAdminStatusMutation.isPending && (
+                      <IconLoader className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Save Administrator Status
+                  </Button>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="overleaf-compile-timeout" className="text-sm">
-                    Compile timeout (seconds)
-                  </Label>
-                  <Input
-                    id="overleaf-compile-timeout"
-                    type="number"
-                    min={60}
-                    step={30}
-                    value={editFeatures.compileTimeout}
-                    onChange={(event) =>
-                      setEditFeatures((prev) => {
-                        const parsed = Number.parseInt(event.target.value, 10);
-                        return {
-                          ...prev,
-                          compileTimeout: Number.isNaN(parsed)
-                            ? prev.compileTimeout
-                            : parsed,
-                        };
-                      })
+                <Separator />
+
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-medium">Set Password</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Directly replace the password without sending an email.
+                      Minimum 8 characters.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="overleaf-new-password">New Password</Label>
+                    <Input
+                      id="overleaf-new-password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Enter new password (min 8 chars)"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSetPassword}
+                    disabled={
+                      setPasswordMutation.isPending || newPassword.length === 0
                     }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Minimum 60 seconds. Higher values reduce compilation
-                    timeouts.
-                  </p>
+                  >
+                    {setPasswordMutation.isPending ? (
+                      <IconLoader className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <IconKey className="mr-2 h-4 w-4" />
+                    )}
+                    Update Password
+                  </Button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-              Select an Overleaf user to edit their features.
+              Select an Overleaf user to manage admin status or passwords.
             </div>
           )}
           <DrawerFooter className="gap-2">
-            <Button
-              onClick={handleSaveFeatures}
-              disabled={upgradeFeaturesMutation.isPending || !editingUser}
-            >
-              {upgradeFeaturesMutation.isPending && (
-                <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Save Changes
-            </Button>
             <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">Close</Button>
             </DrawerClose>
           </DrawerFooter>
         </DrawerContent>

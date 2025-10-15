@@ -104,4 +104,40 @@ export class OverleafUserRepository extends BaseOverleafRepository {
       signUpDate: { $gte: sinceDate },
     });
   }
+
+  /**
+   * Update admin status for a user
+   */
+  async updateAdminStatus(email: string, isAdmin: boolean): Promise<boolean> {
+    const collection = this.getUsersCollection();
+    const result = await collection.updateOne(
+      { email },
+      {
+        $set: {
+          isAdmin,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    return result.matchedCount > 0;
+  }
+
+  /**
+   * Set user password (using bcrypt hash)
+   */
+  async setPassword(email: string, hashedPassword: string): Promise<boolean> {
+    const collection = this.getUsersCollection();
+    const result = await collection.updateOne(
+      { email },
+      {
+        $set: {
+          hashedPassword,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    return result.matchedCount > 0;
+  }
 }

@@ -195,27 +195,6 @@ export class DockerCommandExecutor {
   }
 
   /**
-   * Execute upgrade-user-features script
-   */
-  public async upgradeUserFeatures(
-    email: string,
-    features?: Record<string, any>,
-  ): Promise<ScriptExecutionResult> {
-    const args = ["--email", email];
-
-    if (features) {
-      // Add feature flags if provided
-      for (const [key, value] of Object.entries(features)) {
-        args.push(`--${key}`, String(value));
-      }
-    }
-
-    return this.executeScript("upgrade-user-features.mjs", args, {
-      timeout: 60000,
-    });
-  }
-
-  /**
    * Check MongoDB connection
    */
   public async checkMongoDB(): Promise<ScriptExecutionResult> {

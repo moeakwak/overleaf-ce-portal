@@ -28,9 +28,14 @@ const deleteUserSchema = z.object({
   skipEmail: z.boolean().default(false),
 });
 
-const upgradeUserFeaturesSchema = z.object({
+const updateAdminStatusSchema = z.object({
   email: z.string().email(),
-  features: z.record(z.string(), z.any()).optional(),
+  isAdmin: z.boolean(),
+});
+
+const setPasswordSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
 export const overleafUserRouter = router({
@@ -192,27 +197,27 @@ export const overleafUserRouter = router({
       }
     }),
 
-  // Upgrade user features
-  upgradeFeatures: protectedProcedure
-    .input(upgradeUserFeaturesSchema)
+  // Update user admin status
+  updateAdminStatus: protectedProcedure
+    .input(updateAdminStatusSchema)
     .mutation(async ({ input }) => {
       try {
         const userService = appContext.getOverleafUserService();
-        const result = await userService.upgradeUserFeatures(
+        const result = await userService.updateAdminStatus(
           input.email,
-          input.features,
+          input.isAdmin,
         );
 
         if (!result.success) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: result.error || "Failed to upgrade user features",
+            message: result.error || "Failed to update admin status",
           });
         }
 
         return {
           success: true,
-          message: "User features upgraded successfully",
+          message: "Admin status updated successfully",
         };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
@@ -221,7 +226,41 @@ export const overleafUserRouter = router({
           message:
             error instanceof Error
               ? error.message
-              : "Failed to upgrade user features",
+              : "Failed to update admin status",
+        });
+      }
+    }),
+
+  // Set user password directly using bcrypt + MongoDB
+  setPassword: protectedProcedure
+    .input(setPasswordSchema)
+    .mutation(async ({ input }) => {
+      try {
+        const userService = appContext.getOverleafUserService();
+        const result = await userService.setUserPassword(
+          input.email,
+          input.password,
+        );
+
+        if (!result.success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: result.error || "Failed to update password",
+          });
+        }
+
+        return {
+          success: true,
+          message: "Password updated successfully",
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update password",
         });
       }
     }),
