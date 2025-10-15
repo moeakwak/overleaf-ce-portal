@@ -7,6 +7,9 @@
  * See: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
+// Explicitly declare this file only runs in Node.js runtime
+export const runtime = "nodejs";
+
 import { AppContext } from "./server/context";
 
 const signalHandlers: Partial<
