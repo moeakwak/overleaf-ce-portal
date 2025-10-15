@@ -39,6 +39,18 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+
+    // Authentication toggles
+    ENABLE_PASSWORD_LOGIN: z.coerce.boolean().default(true),
+    ENABLE_OIDC_LOGIN: z.coerce.boolean().default(false),
+
+    // Generic OIDC Provider Configuration
+    OIDC_PROVIDER_ID: z.string().default("oidc-provider"),
+    OIDC_PROVIDER_NAME: z.string().default("OIDC"),
+    OIDC_CLIENT_ID: z.string().optional(),
+    OIDC_CLIENT_SECRET: z.string().optional(),
+    OIDC_DISCOVERY_URL: z.string().url().optional(),
+    OIDC_SCOPES: z.string().optional(),
   },
 
   /**
@@ -66,6 +78,14 @@ export const env = createEnv({
     REDIS_URL: process.env.REDIS_URL,
     OVERLEAF_TOOLKIT_PATH: process.env.OVERLEAF_TOOLKIT_PATH,
     NODE_ENV: process.env.NODE_ENV,
+    ENABLE_PASSWORD_LOGIN: process.env.ENABLE_PASSWORD_LOGIN,
+    ENABLE_OIDC_LOGIN: process.env.ENABLE_OIDC_LOGIN,
+    OIDC_PROVIDER_ID: process.env.OIDC_PROVIDER_ID,
+    OIDC_PROVIDER_NAME: process.env.OIDC_PROVIDER_NAME,
+    OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
+    OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET,
+    OIDC_DISCOVERY_URL: process.env.OIDC_DISCOVERY_URL,
+    OIDC_SCOPES: process.env.OIDC_SCOPES,
 
     // Client-side variables
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

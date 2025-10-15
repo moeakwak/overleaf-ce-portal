@@ -292,7 +292,10 @@ export class MongoDBManager {
 
           // Get collaborator user info
           const collaboratorUsers = [];
-          if (project.collaberator_refs && project.collaberator_refs.length > 0) {
+          if (
+            project.collaberator_refs &&
+            project.collaberator_refs.length > 0
+          ) {
             const collabUsers = await usersCollection
               .find({
                 _id: { $in: project.collaberator_refs },
@@ -335,7 +338,7 @@ export class MongoDBManager {
           }
 
           return enrichedProject;
-        })
+        }),
       );
 
       return {

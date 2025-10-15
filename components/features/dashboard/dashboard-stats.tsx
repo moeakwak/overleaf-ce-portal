@@ -15,7 +15,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc/client";
+import { type RouterOutputs, trpc } from "@/lib/trpc/client";
+
+type SystemStats = RouterOutputs["system"]["stats"];
 
 export function DashboardStats() {
   const [currentTime, setCurrentTime] = useState<string>("");
@@ -228,32 +230,40 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 }
 
-function getHealthPercentage(systemStats: any): string {
+function getHealthPercentage(systemStats: SystemStats | undefined): string {
   if (!systemStats) return "—";
-  const healthy = systemStats.healthyComponents || 0;
-  const total = systemStats.totalComponents || 1;
-  return `${Math.round((healthy / total) * 100)}%`;
+  // Calculate health percentage based on non-zero stats
+  const statsCount =
+    (systemStats.users.totalUsers > 0 ? 1 : 0) +
+    (systemStats.projects.totalProjects > 0 ? 1 : 0) +
+    (systemStats.database.dbSize > 0 ? 1 : 0);
+  const total = 3;
+  return `${Math.round((statsCount / total) * 100)}%`;
 }
 
-function getHealthStatus(systemStats: any): string {
+function getHealthStatus(systemStats: SystemStats | undefined): string {
   if (!systemStats) return "Unknown";
-  const healthy = systemStats.healthyComponents || 0;
-  const total = systemStats.totalComponents || 1;
-  const percentage = (healthy / total) * 100;
+  // Calculate health percentage based on non-zero stats
+  const statsCount =
+    (systemStats.users.totalUsers > 0 ? 1 : 0) +
+    (systemStats.projects.totalProjects > 0 ? 1 : 0) +
+    (systemStats.database.dbSize > 0 ? 1 : 0);
+  const total = 3;
+  const percentage = (statsCount / total) * 100;
 
   if (percentage === 100) return "Healthy";
   if (percentage >= 80) return "Warning";
   return "Critical";
 }
 
-function getHealthIcon(systemStats: any) {
+function getHealthIcon(systemStats: SystemStats | undefined) {
   const status = getHealthStatus(systemStats);
   if (status === "Healthy") return <IconTrendingUp className="size-3" />;
   if (status === "Warning") return <IconTrendingUp className="size-3" />;
   return <IconTrendingDown className="size-3" />;
 }
 
-function getHealthBadgeColor(systemStats: any): string {
+function getHealthBadgeColor(systemStats: SystemStats | undefined): string {
   const status = getHealthStatus(systemStats);
   if (status === "Healthy") return "text-green-600 border-green-200";
   if (status === "Warning") return "text-yellow-600 border-yellow-200";

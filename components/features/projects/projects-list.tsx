@@ -32,6 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc/client";
+import type { OverleafProject } from "@/server/types/overleaf";
 import { ProjectsDataTable } from "./projects-table/data-table";
 
 export function ProjectsList() {
@@ -42,7 +43,8 @@ export function ProjectsList() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [projectDetailsDrawerOpen, setProjectDetailsDrawerOpen] =
     useState(false);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [selectedProject, setSelectedProject] =
+    useState<OverleafProject | null>(null);
 
   // Debounce search term
   useEffect(() => {
@@ -55,11 +57,7 @@ export function ProjectsList() {
   }, [searchTerm]);
 
   // Queries
-  const {
-    data: projectsData,
-    isLoading,
-    refetch,
-  } = trpc.project.list.useQuery({
+  const { data: projectsData, isLoading } = trpc.project.list.useQuery({
     limit: pageSize,
     offset: currentPage * pageSize,
     searchName: debouncedSearchTerm || undefined,
@@ -87,12 +85,12 @@ export function ProjectsList() {
     });
   };
 
-  const handleViewProjectDetails = (project: any) => {
+  const handleViewProjectDetails = (project: OverleafProject) => {
     setSelectedProject(project);
     setProjectDetailsDrawerOpen(true);
   };
 
-  const handleExportFromTable = (project: any) => {
+  const handleExportFromTable = (project: OverleafProject) => {
     setSelectedProject(project);
     setExportDialogOpen(true);
   };
@@ -410,9 +408,9 @@ export function ProjectsList() {
                           </div>
                           <div className="space-y-1">
                             {selectedProject.collaberator_refs.map(
-                              (ref: string, index: number) => (
+                              (ref: string) => (
                                 <div
-                                  key={index}
+                                  key={ref}
                                   className="font-mono text-xs bg-green-50 p-2 rounded"
                                 >
                                   {ref}
@@ -429,9 +427,9 @@ export function ProjectsList() {
                           </div>
                           <div className="space-y-1">
                             {selectedProject.readOnly_refs.map(
-                              (ref: string, index: number) => (
+                              (ref: string) => (
                                 <div
-                                  key={index}
+                                  key={ref}
                                   className="font-mono text-xs bg-yellow-50 p-2 rounded"
                                 >
                                   {ref}

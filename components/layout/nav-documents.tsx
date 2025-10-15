@@ -7,9 +7,9 @@ import {
   IconShare3,
   IconTrash,
 } from "@tabler/icons-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +32,7 @@ export function NavDocuments({
 }: {
   items: {
     name: string;
-    url: string;
+    url: Route | string;
     icon: Icon;
   }[];
 }) {
@@ -48,7 +48,7 @@ export function NavDocuments({
           return (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton asChild isActive={isActive}>
-                <Link href={item.url as any}>
+                <Link href={item.url as Route}>
                   <item.icon />
                   <span>{item.name}</span>
                 </Link>

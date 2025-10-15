@@ -1,6 +1,7 @@
 "use client";
 
 import type { Icon } from "@tabler/icons-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -17,7 +18,7 @@ export function NavMain({
 }: {
   items: {
     title: string;
-    url: string;
+    url: Route | string;
     icon?: Icon;
   }[];
 }) {
@@ -37,7 +38,7 @@ export function NavMain({
                   asChild
                   isActive={isActive}
                 >
-                  <Link href={item.url as any}>
+                  <Link href={item.url as Route}>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                   </Link>

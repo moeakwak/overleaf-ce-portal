@@ -29,24 +29,10 @@ import {
   formatUserId,
   getUserDisplayName,
 } from "@/lib/table-utils";
+import type { OverleafProject } from "@/server/types/overleaf";
 
-export type Project = {
-  _id: string;
-  name?: string;
-  owner_ref?: string;
-  compiler?: string;
-  collaberator_refs?: string[];
-  readOnly_refs?: string[];
-  lastUpdated?: string | Date;
-  version?: number;
-  spellCheckLanguage?: string;
-  rootDoc_id?: string;
-  publicAccesLevel?: string;
-  tokens?: {
-    readAndWrite?: string;
-    readOnly?: string;
-  };
-  rootFolder?: any[];
+// Extended Project type with optional user information
+export type Project = OverleafProject & {
   // Extended user info for owner and collaborators
   ownerUser?: {
     _id: string;
