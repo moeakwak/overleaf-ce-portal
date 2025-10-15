@@ -3,11 +3,9 @@
 import {
   IconDashboard,
   IconDatabase,
-  IconFileDescription,
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
-  IconReport,
   IconSettings,
   IconUserShield,
   IconUsers,
@@ -15,7 +13,6 @@ import {
 import Link from "next/link";
 import type * as React from "react";
 
-import { NavDocuments } from "@/components/layout/nav-documents";
 import { NavMain } from "@/components/layout/nav-main";
 import { NavSecondary } from "@/components/layout/nav-secondary";
 import { NavUser } from "@/components/layout/nav-user";
@@ -56,23 +53,6 @@ const navigation = {
       title: "System",
       url: "/admin/system",
       icon: IconDatabase,
-    },
-  ],
-  navDocuments: [
-    {
-      name: "Overleaf User Export",
-      url: "/admin/overleaf-users/export",
-      icon: IconFileDescription,
-    },
-    {
-      name: "Project Export",
-      url: "/admin/projects/export",
-      icon: IconFolder,
-    },
-    {
-      name: "System Logs",
-      url: "/admin/system/logs",
-      icon: IconReport,
     },
   ],
   navSecondary: [
@@ -121,7 +101,6 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navigation.navMain} />
-        <NavDocuments items={navigation.navDocuments} />
         <NavSecondary items={navigation.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
