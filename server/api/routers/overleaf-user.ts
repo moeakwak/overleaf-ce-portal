@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { OverleafUserService } from "@/server/services/overleaf-user-service";
+import { AppContext } from "@/server/context";
 import { protectedProcedure, router } from "../trpc";
 
-const overleafUserService = new OverleafUserService();
+const appContext = AppContext.getInstance();
 
 // Input schemas
 const createUserSchema = z.object({
@@ -37,7 +37,8 @@ export const overleafUserRouter = router({
   // Get user statistics
   getStats: protectedProcedure.query(async () => {
     try {
-      return await overleafUserService.getUserStats();
+      const userService = appContext.getOverleafUserService();
+      return await userService.getUserStats();
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -52,7 +53,8 @@ export const overleafUserRouter = router({
     .input(userListOptionsSchema)
     .query(async ({ input }) => {
       try {
-        return await overleafUserService.listUsers(input);
+        const userService = appContext.getOverleafUserService();
+        return await userService.listUsers(input);
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -65,7 +67,8 @@ export const overleafUserRouter = router({
   // Get user by ID
   getById: protectedProcedure.input(z.string()).query(async ({ input: id }) => {
     try {
-      const user = await overleafUserService.getUserById(id);
+      const userService = appContext.getOverleafUserService();
+      const user = await userService.getUserById(id);
       if (!user) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -87,7 +90,8 @@ export const overleafUserRouter = router({
     .input(z.string().email())
     .query(async ({ input: email }) => {
       try {
-        const user = await overleafUserService.getUserByEmail(email);
+        const userService = appContext.getOverleafUserService();
+        const user = await userService.getUserByEmail(email);
         if (!user) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -115,10 +119,8 @@ export const overleafUserRouter = router({
     )
     .query(async ({ input }) => {
       try {
-        return await overleafUserService.searchUsers(
-          input.emailPattern,
-          input.limit,
-        );
+        const userService = appContext.getOverleafUserService();
+        return await userService.searchUsers(input.emailPattern, input.limit);
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -133,7 +135,8 @@ export const overleafUserRouter = router({
     .input(createUserSchema)
     .mutation(async ({ input }) => {
       try {
-        const result = await overleafUserService.createUser(input);
+        const userService = appContext.getOverleafUserService();
+        const result = await userService.createUser(input);
 
         if (!result.success) {
           throw new TRPCError({
@@ -162,7 +165,8 @@ export const overleafUserRouter = router({
     .input(deleteUserSchema)
     .mutation(async ({ input }) => {
       try {
-        const result = await overleafUserService.deleteUser(
+        const userService = appContext.getOverleafUserService();
+        const result = await userService.deleteUser(
           input.email,
           input.skipEmail,
         );
@@ -193,7 +197,8 @@ export const overleafUserRouter = router({
     .input(upgradeUserFeaturesSchema)
     .mutation(async ({ input }) => {
       try {
-        const result = await overleafUserService.upgradeUserFeatures(
+        const userService = appContext.getOverleafUserService();
+        const result = await userService.upgradeUserFeatures(
           input.email,
           input.features,
         );
@@ -226,7 +231,8 @@ export const overleafUserRouter = router({
     .input(z.string())
     .query(async ({ input: userId }) => {
       try {
-        return await overleafUserService.getUserSessions(userId);
+        const userService = appContext.getOverleafUserService();
+        return await userService.getUserSessions(userId);
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -241,7 +247,8 @@ export const overleafUserRouter = router({
   // Get active sessions
   getActiveSessions: protectedProcedure.query(async () => {
     try {
-      return await overleafUserService.getActiveSessions();
+      const userService = appContext.getOverleafUserService();
+      return await userService.getActiveSessions();
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -256,7 +263,8 @@ export const overleafUserRouter = router({
   // Clear expired sessions
   clearExpiredSessions: protectedProcedure.mutation(async () => {
     try {
-      const clearedCount = await overleafUserService.clearExpiredSessions();
+      const userService = appContext.getOverleafUserService();
+      const clearedCount = await userService.clearExpiredSessions();
       return {
         success: true,
         clearedCount,
@@ -278,7 +286,8 @@ export const overleafUserRouter = router({
     .input(z.string())
     .query(async ({ input: userId }) => {
       try {
-        return await overleafUserService.getUserWithProjectsSummary(userId);
+        const userService = appContext.getOverleafUserService();
+        return await userService.getUserWithProjectsSummary(userId);
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",

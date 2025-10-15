@@ -1,12 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { SystemService } from "@/server/services/system-service";
+import { AppContext } from "@/server/context";
 import { protectedProcedure, router } from "../trpc";
 
-const systemService = new SystemService();
+const appContext = AppContext.getInstance();
 
 export const systemRouter = router({
   health: protectedProcedure.query(async () => {
     try {
+      const systemService = appContext.getOverleafSystemService();
       return await systemService.getSystemHealth();
     } catch (error) {
       throw new TRPCError({
@@ -17,6 +18,7 @@ export const systemRouter = router({
   }),
   stats: protectedProcedure.query(async () => {
     try {
+      const systemService = appContext.getOverleafSystemService();
       return await systemService.getSystemStats();
     } catch (error) {
       throw new TRPCError({

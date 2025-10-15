@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { ProjectService } from "@/server/services/project-service";
+import { AppContext } from "@/server/context";
 import { protectedProcedure, router } from "../trpc";
 
-const projectService = new ProjectService();
+const appContext = AppContext.getInstance();
 
 // Input schemas
 const projectListOptionsSchema = z.object({
@@ -32,6 +32,7 @@ export const projectRouter = router({
   // Get project statistics
   getStats: protectedProcedure.query(async () => {
     try {
+      const projectService = appContext.getOverleafProjectService();
       return await projectService.getProjectStats();
     } catch (error) {
       throw new TRPCError({
@@ -49,6 +50,7 @@ export const projectRouter = router({
     .input(projectListOptionsSchema)
     .query(async ({ input }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.listProjects(input);
       } catch (error) {
         throw new TRPCError({
@@ -62,6 +64,7 @@ export const projectRouter = router({
   // Get project by ID
   getById: protectedProcedure.input(z.string()).query(async ({ input: id }) => {
     try {
+      const projectService = appContext.getOverleafProjectService();
       const project = await projectService.getProjectById(id);
       if (!project) {
         throw new TRPCError({
@@ -85,6 +88,7 @@ export const projectRouter = router({
     .input(z.string())
     .query(async ({ input: ownerId }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.getProjectsByOwner(ownerId);
       } catch (error) {
         throw new TRPCError({
@@ -107,6 +111,7 @@ export const projectRouter = router({
     )
     .query(async ({ input }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.searchProjects(
           input.namePattern,
           input.limit,
@@ -127,6 +132,7 @@ export const projectRouter = router({
     .input(z.string())
     .query(async ({ input: projectId }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.getProjectWithRealtimeInfo(projectId);
       } catch (error) {
         throw new TRPCError({
@@ -144,6 +150,7 @@ export const projectRouter = router({
     .input(z.string())
     .query(async ({ input: projectId }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.getProjectCollaborationInfo(projectId);
       } catch (error) {
         throw new TRPCError({
@@ -161,6 +168,7 @@ export const projectRouter = router({
     .input(z.string())
     .query(async ({ input: projectId }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.getProjectDocuments(projectId);
       } catch (error) {
         throw new TRPCError({
@@ -178,6 +186,7 @@ export const projectRouter = router({
     .input(projectExportSchema)
     .mutation(async ({ input }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         const result = await projectService.exportUserProjects(input);
 
         if (!result.success) {
@@ -209,6 +218,7 @@ export const projectRouter = router({
     .input(batchExportOptionsSchema)
     .query(async ({ input }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         return await projectService.getProjectsForBatchExport(input);
       } catch (error) {
         throw new TRPCError({
@@ -231,6 +241,7 @@ export const projectRouter = router({
     )
     .query(async ({ input }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         const since = new Date();
         since.setDate(since.getDate() - input.days);
 
@@ -260,6 +271,7 @@ export const projectRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
+        const projectService = appContext.getOverleafProjectService();
         const result = await projectService.exportAllUserProjectsWithProgress(
           input.userId,
           input.outputDir,

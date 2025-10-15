@@ -1,26 +1,33 @@
-import Docker from "dockerode";
-import { env } from "@/lib/env";
+import type Docker from "dockerode";
 import type {
   ScriptExecutionOptions,
   ScriptExecutionResult,
 } from "../types/overleaf";
 
+/**
+ * Executes scripts inside the Sharelatex/Overleaf Docker container.
+ *
+ * This class wraps Docker exec operations to run Overleaf CE toolkit scripts.
+ * It's designed to be instantiated per OverleafInstance (not a singleton)
+ * to support future multi-workspace scenarios.
+ *
+ * Key responsibilities:
+ * - Execute scripts in the configured container
+ * - Handle command timeouts and errors
+ * - Parse script outputs
+ * - Provide convenient methods for common Overleaf operations
+ *
+ * Usage:
+ * ```typescript
+ * const executor = new DockerCommandExecutor(docker, containerName);
+ * const result = await executor.createUser("user@example.com", true);
+ * ```
+ */
 export class DockerCommandExecutor {
-  private docker: Docker;
-  private static instance: DockerCommandExecutor;
-
-  private constructor() {
-    this.docker = new Docker({
-      socketPath: env.DOCKER_SOCKET_PATH,
-    });
-  }
-
-  public static getInstance(): DockerCommandExecutor {
-    if (!DockerCommandExecutor.instance) {
-      DockerCommandExecutor.instance = new DockerCommandExecutor();
-    }
-    return DockerCommandExecutor.instance;
-  }
+  constructor(
+    private readonly docker: Docker,
+    private readonly containerName: string,
+  ) {}
 
   /**
    * Execute a script inside the Sharelatex container
@@ -33,12 +40,12 @@ export class DockerCommandExecutor {
     const startTime = Date.now();
 
     try {
-      const container = this.docker.getContainer(env.SHARELATEX_CONTAINER);
+      const container = this.docker.getContainer(this.containerName);
 
       // Check if container is running
       const containerInfo = await container.inspect();
       if (!containerInfo.State.Running) {
-        throw new Error(`Container ${env.SHARELATEX_CONTAINER} is not running`);
+        throw new Error(`Container ${this.containerName} is not running`);
       }
 
       // Prepare the command
@@ -236,7 +243,7 @@ export class DockerCommandExecutor {
     error?: string;
   }> {
     try {
-      const container = this.docker.getContainer(env.SHARELATEX_CONTAINER);
+      const container = this.docker.getContainer(this.containerName);
       const containerInfo = await container.inspect();
 
       return {

@@ -1,27 +1,43 @@
-import { DockerCommandExecutor } from "../managers/docker-executor";
-import { MongoDBManager } from "../managers/mongodb";
-import { RedisManager } from "../managers/redis";
+import type { DockerCommandExecutor } from "../../connectors/docker-executor";
 import type {
   OverleafDoc,
   OverleafProject,
   ProjectExportOptions,
   ProjectListOptions,
   ScriptExecutionResult,
-} from "../types/overleaf";
+} from "../../types/overleaf";
+import type { OverleafInstance } from "../instance";
+import { OverleafProjectRepository } from "../repositories/project.repository";
+import { OverleafSessionRepository } from "../repositories/session.repository";
+import { OverleafUserRepository } from "../repositories/user.repository";
 
-export class ProjectService {
-  private dockerExecutor: DockerCommandExecutor;
-  private mongoManager: MongoDBManager;
-  private redisManager: RedisManager;
+/**
+ * Service for Overleaf project management.
+ *
+ * Responsibilities:
+ * - Business logic for project operations (export, list, search, statistics)
+ * - Data transformation and assembly
+ * - Orchestration of Repository calls
+ * - Integration with Docker scripts for export operations
+ * - Avoiding N+1 query problems through batch operations
+ *
+ * Uses Repository pattern for data access - all database queries go through repositories.
+ */
+export class OverleafProjectService {
+  private readonly projectRepo: OverleafProjectRepository;
+  private readonly userRepo: OverleafUserRepository;
+  private readonly sessionRepo: OverleafSessionRepository;
+  private readonly dockerExecutor: DockerCommandExecutor;
 
-  constructor() {
-    this.dockerExecutor = DockerCommandExecutor.getInstance();
-    this.mongoManager = MongoDBManager.getInstance();
-    this.redisManager = RedisManager.getInstance();
+  constructor(instance: OverleafInstance) {
+    this.projectRepo = new OverleafProjectRepository(instance);
+    this.userRepo = new OverleafUserRepository(instance);
+    this.sessionRepo = new OverleafSessionRepository(instance);
+    this.dockerExecutor = instance.getDockerExecutor();
   }
 
   /**
-   * Export user projects
+   * Export user projects via Docker script
    */
   public async exportUserProjects(options: ProjectExportOptions): Promise<{
     success: boolean;
@@ -32,7 +48,7 @@ export class ProjectService {
     try {
       // Validate user exists if userId is provided
       if (options.userId) {
-        const user = await this.mongoManager.findUserById(options.userId);
+        const user = await this.userRepo.findById(options.userId);
         if (!user) {
           return {
             success: false,
@@ -50,9 +66,7 @@ export class ProjectService {
 
       // Validate project exists if projectId is provided
       if (options.projectId) {
-        const project = await this.mongoManager.findProjectById(
-          options.projectId,
-        );
+        const project = await this.projectRepo.findById(options.projectId);
         if (!project) {
           return {
             success: false,
@@ -99,7 +113,7 @@ export class ProjectService {
   }
 
   /**
-   * List user projects via script
+   * List user projects via Docker script
    */
   public async listUserProjectsViaScript(userId: string): Promise<{
     success: boolean;
@@ -109,7 +123,7 @@ export class ProjectService {
   }> {
     try {
       // Validate user exists
-      const user = await this.mongoManager.findUserById(userId);
+      const user = await this.userRepo.findById(userId);
       if (!user) {
         return {
           success: false,
@@ -172,7 +186,7 @@ export class ProjectService {
    */
   public async getProjectById(id: string): Promise<OverleafProject | null> {
     try {
-      return await this.mongoManager.findProjectById(id);
+      return await this.projectRepo.findById(id);
     } catch (error) {
       console.error("Error getting project by ID:", error);
       return null;
@@ -184,7 +198,7 @@ export class ProjectService {
    */
   public async getProjectsByOwner(ownerId: string): Promise<OverleafProject[]> {
     try {
-      return await this.mongoManager.findProjectsByOwner(ownerId);
+      return await this.projectRepo.findByOwner(ownerId);
     } catch (error) {
       console.error("Error getting projects by owner:", error);
       return [];
@@ -193,14 +207,65 @@ export class ProjectService {
 
   /**
    * List projects with pagination and filtering
+   *
+   * This method avoids N+1 query problems by:
+   * 1. Fetching all projects in one query
+   * 2. Collecting all unique user IDs
+   * 3. Batch fetching all users at once
+   * 4. Assembling the data in-memory
    */
   public async listProjects(options: ProjectListOptions = {}): Promise<{
-    projects: OverleafProject[];
+    projects: (OverleafProject & { ownerInfo?: any })[];
     total: number;
     hasMore: boolean;
   }> {
     try {
-      return await this.mongoManager.listProjects(options);
+      const {
+        limit = 50,
+        offset = 0,
+        ownerId,
+        nameFilter,
+        sortBy = "lastUpdated",
+        sortOrder = "desc",
+      } = options;
+
+      // Business logic: Build filter
+      const filter: Record<string, any> = {};
+      if (ownerId) {
+        filter.owner_ref = ownerId;
+      }
+      if (nameFilter) {
+        filter.name = { $regex: nameFilter, $options: "i" };
+      }
+
+      // Business logic: Build sort
+      const sort: Record<string, 1 | -1> = {
+        [sortBy]: sortOrder === "asc" ? 1 : -1,
+      };
+
+      // Data access: Query via Repository
+      const [projects, total] = await Promise.all([
+        this.projectRepo.findMany(filter, { skip: offset, limit, sort }),
+        this.projectRepo.count(filter),
+      ]);
+
+      // Batch fetch owner information to avoid N+1 queries
+      const ownerIds = [...new Set(projects.map((p) => p.owner_ref))];
+      const users = await this.userRepo.findByIds(ownerIds);
+      const userMap = new Map(users.map((u) => [u._id, u]));
+
+      // Assemble data with owner information
+      const projectsWithOwner = projects.map((project) => ({
+        ...project,
+        ownerInfo: userMap.get(project.owner_ref),
+      }));
+
+      // Business logic: Calculate hasMore
+      return {
+        projects: projectsWithOwner,
+        total,
+        hasMore: offset + projects.length < total,
+      };
     } catch (error) {
       console.error("Error listing projects:", error);
       return { projects: [], total: 0, hasMore: false };
@@ -217,7 +282,27 @@ export class ProjectService {
     averageProjectsPerUser: number;
   }> {
     try {
-      return await this.mongoManager.getProjectStats();
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const [totalProjects, activeProjects, projectsThisMonth, totalUsers] =
+        await Promise.all([
+          this.projectRepo.count(),
+          this.projectRepo.countProjectsUpdatedAfter(thirtyDaysAgo),
+          this.projectRepo.countProjectsUpdatedAfter(monthStart),
+          this.userRepo.count(),
+        ]);
+
+      return {
+        totalProjects,
+        activeProjects,
+        projectsThisMonth,
+        averageProjectsPerUser:
+          totalUsers > 0
+            ? Math.round((totalProjects / totalUsers) * 100) / 100
+            : 0,
+      };
     } catch (error) {
       console.error("Error getting project stats:", error);
       return {
@@ -234,7 +319,7 @@ export class ProjectService {
    */
   public async getProjectDocuments(projectId: string): Promise<OverleafDoc[]> {
     try {
-      return await this.mongoManager.findDocsByProject(projectId);
+      return await this.projectRepo.findDocsByProject(projectId);
     } catch (error) {
       console.error("Error getting project documents:", error);
       return [];
@@ -246,7 +331,7 @@ export class ProjectService {
    */
   public async getDocumentById(id: string): Promise<OverleafDoc | null> {
     try {
-      return await this.mongoManager.findDocById(id);
+      return await this.projectRepo.findDocById(id);
     } catch (error) {
       console.error("Error getting document by ID:", error);
       return null;
@@ -275,12 +360,12 @@ export class ProjectService {
         recentChanges,
         persistedVersionInfo,
       ] = await Promise.all([
-        this.mongoManager.findProjectById(projectId),
-        this.redisManager.getDocumentHead(projectId),
-        this.redisManager.getDocumentVersion(projectId),
-        this.redisManager.getDocumentChangesCount(projectId),
-        this.redisManager.getRecentDocumentChanges(projectId, 5),
-        this.redisManager.getPersistedVersionInfo(projectId),
+        this.projectRepo.findById(projectId),
+        this.sessionRepo.getDocumentHead(projectId),
+        this.sessionRepo.getDocumentVersion(projectId),
+        this.sessionRepo.getDocumentChangesCount(projectId),
+        this.sessionRepo.getRecentDocumentChanges(projectId, 5),
+        this.sessionRepo.getPersistedVersionInfo(projectId),
       ]);
 
       return {
@@ -316,11 +401,10 @@ export class ProjectService {
     limit = 20,
   ): Promise<OverleafProject[]> {
     try {
-      const result = await this.mongoManager.listProjects({
-        nameFilter: namePattern,
-        limit,
-      });
-      return result.projects;
+      const filter = {
+        name: { $regex: namePattern, $options: "i" },
+      };
+      return await this.projectRepo.findMany(filter, { limit });
     } catch (error) {
       console.error("Error searching projects:", error);
       return [];
@@ -337,7 +421,7 @@ export class ProjectService {
     readOnlyUsers: any[];
   }> {
     try {
-      const project = await this.mongoManager.findProjectById(projectId);
+      const project = await this.projectRepo.findById(projectId);
       if (!project) {
         return {
           project: null,
@@ -347,24 +431,29 @@ export class ProjectService {
         };
       }
 
-      // Get owner and collaborator details
-      const [ownerInfo, collaborators, readOnlyUsers] = await Promise.all([
-        this.mongoManager.findUserById(project.owner_ref),
-        Promise.all(
-          project.collaberator_refs.map((id) =>
-            this.mongoManager.findUserById(id),
-          ),
-        ),
-        Promise.all(
-          project.readOnly_refs.map((id) => this.mongoManager.findUserById(id)),
-        ),
-      ]);
+      // Batch fetch all user info to avoid N+1 queries
+      const allUserIds = [
+        project.owner_ref,
+        ...project.collaberator_refs,
+        ...project.readOnly_refs,
+      ];
+      const users = await this.userRepo.findByIds(allUserIds);
+      const userMap = new Map(users.map((u) => [u._id, u]));
+
+      // Assemble collaboration info
+      const ownerInfo = userMap.get(project.owner_ref);
+      const collaborators = project.collaberator_refs
+        .map((id) => userMap.get(id))
+        .filter(Boolean);
+      const readOnlyUsers = project.readOnly_refs
+        .map((id) => userMap.get(id))
+        .filter(Boolean);
 
       return {
         project,
         ownerInfo,
-        collaborators: collaborators.filter(Boolean),
-        readOnlyUsers: readOnlyUsers.filter(Boolean),
+        collaborators,
+        readOnlyUsers,
       };
     } catch (error) {
       console.error("Error getting project collaboration info:", error);
@@ -404,14 +493,16 @@ export class ProjectService {
         filter.owner_ref = { $in: options.ownersOnly };
       }
 
-      const projects = await this.mongoManager.listProjects({
-        ...filter,
-        limit: 1000, // Large limit for batch operations
-      });
+      const [projects, total] = await Promise.all([
+        this.projectRepo.findMany(filter, {
+          limit: 1000, // Large limit for batch operations
+        }),
+        this.projectRepo.count(filter),
+      ]);
 
       return {
-        projects: projects.projects,
-        totalSize: projects.total,
+        projects,
+        totalSize: total,
       };
     } catch (error) {
       console.error("Error getting projects for batch export:", error);
@@ -441,7 +532,7 @@ export class ProjectService {
   }> {
     try {
       // Get user projects
-      const projects = await this.mongoManager.findProjectsByOwner(userId);
+      const projects = await this.projectRepo.findByOwner(userId);
       const totalProjects = projects.length;
 
       if (totalProjects === 0) {

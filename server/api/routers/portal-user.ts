@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { PortalUserService } from "@/server/services/portal-user-service";
+import { AppContext } from "@/server/context";
 import { protectedProcedure, router } from "../trpc";
 
-const portalUserService = new PortalUserService();
+const appContext = AppContext.getInstance();
 
 const portalUserListSchema = z.object({
   limit: z.number().min(1).max(100).default(25),
@@ -16,6 +16,7 @@ const portalUserListSchema = z.object({
 const portalUserIdSchema = z.string().min(1);
 
 const portalUserLinkSchema = z.object({
+  portalUserId: z.string().min(1, "Portal user ID is required"),
   overleafUserId: z.string().min(1, "Overleaf user ID is required"),
   overleafUserEmail: z
     .string()
@@ -37,6 +38,7 @@ export const portalUserRouter = router({
     .input(portalUserListSchema)
     .query(async ({ input }) => {
       try {
+        const portalUserService = appContext.getPortalUserService();
         return await portalUserService.listPortalUsers(input);
       } catch (error) {
         throw new TRPCError({
@@ -53,6 +55,7 @@ export const portalUserRouter = router({
     .input(portalUserIdSchema)
     .query(async ({ input }) => {
       try {
+        const portalUserService = appContext.getPortalUserService();
         const portalUser = await portalUserService.getPortalUserById(input);
         if (!portalUser) {
           throw new TRPCError({
@@ -77,6 +80,7 @@ export const portalUserRouter = router({
     .input(updatePortalUserSchema)
     .mutation(async ({ input }) => {
       try {
+        const portalUserService = appContext.getPortalUserService();
         const updated = await portalUserService.updatePortalUser(input);
         if (!updated) {
           throw new TRPCError({
@@ -102,6 +106,7 @@ export const portalUserRouter = router({
 
   getStats: protectedProcedure.query(async () => {
     try {
+      const portalUserService = appContext.getPortalUserService();
       return await portalUserService.getPortalUserStats();
     } catch (error) {
       throw new TRPCError({

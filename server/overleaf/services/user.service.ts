@@ -1,22 +1,37 @@
-import { DockerCommandExecutor } from "../managers/docker-executor";
-import { MongoDBManager } from "../managers/mongodb";
-import { RedisManager } from "../managers/redis";
+import type { DockerCommandExecutor } from "../../connectors/docker-executor";
 import type {
   OverleafUser,
   ScriptExecutionResult,
   UserCreationOptions,
   UserListOptions,
-} from "../types/overleaf";
+} from "../../types/overleaf";
+import type { OverleafInstance } from "../instance";
+import { OverleafProjectRepository } from "../repositories/project.repository";
+import { OverleafSessionRepository } from "../repositories/session.repository";
+import { OverleafUserRepository } from "../repositories/user.repository";
 
+/**
+ * Service for Overleaf user management.
+ *
+ * Responsibilities:
+ * - Business logic for user operations (create, delete, upgrade features)
+ * - Data transformation and assembly
+ * - Orchestration of Repository calls
+ * - Integration with Docker scripts for write operations
+ *
+ * Uses Repository pattern for data access - all database queries go through repositories.
+ */
 export class OverleafUserService {
-  private dockerExecutor: DockerCommandExecutor;
-  private mongoManager: MongoDBManager;
-  private redisManager: RedisManager;
+  private readonly userRepo: OverleafUserRepository;
+  private readonly projectRepo: OverleafProjectRepository;
+  private readonly sessionRepo: OverleafSessionRepository;
+  private readonly dockerExecutor: DockerCommandExecutor;
 
-  constructor() {
-    this.dockerExecutor = DockerCommandExecutor.getInstance();
-    this.mongoManager = MongoDBManager.getInstance();
-    this.redisManager = RedisManager.getInstance();
+  constructor(instance: OverleafInstance) {
+    this.userRepo = new OverleafUserRepository(instance);
+    this.projectRepo = new OverleafProjectRepository(instance);
+    this.sessionRepo = new OverleafSessionRepository(instance);
+    this.dockerExecutor = instance.getDockerExecutor();
   }
 
   /**
@@ -29,10 +44,8 @@ export class OverleafUserService {
     error?: string;
   }> {
     try {
-      // First check if user already exists
-      const existingUser = await this.mongoManager.findUserByEmail(
-        options.email,
-      );
+      // Check if user already exists
+      const existingUser = await this.userRepo.findByEmail(options.email);
       if (existingUser) {
         return {
           success: false,
@@ -61,10 +74,9 @@ export class OverleafUserService {
         };
       }
 
-      // Fetch the created user
-      // Wait a bit for the user to be created in the database
+      // Wait for user to be created in database
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const user = await this.mongoManager.findUserByEmail(options.email);
+      const user = await this.userRepo.findByEmail(options.email);
 
       return {
         success: true,
@@ -99,7 +111,7 @@ export class OverleafUserService {
   }> {
     try {
       // Check if user exists
-      const user = await this.mongoManager.findUserByEmail(email);
+      const user = await this.userRepo.findByEmail(email);
       if (!user) {
         return {
           success: false,
@@ -153,7 +165,7 @@ export class OverleafUserService {
   }> {
     try {
       // Check if user exists
-      const user = await this.mongoManager.findUserByEmail(email);
+      const user = await this.userRepo.findByEmail(email);
       if (!user) {
         return {
           success: false,
@@ -199,7 +211,7 @@ export class OverleafUserService {
    */
   public async getUserByEmail(email: string): Promise<OverleafUser | null> {
     try {
-      return await this.mongoManager.findUserByEmail(email);
+      return await this.userRepo.findByEmail(email);
     } catch (error) {
       console.error("Error getting user by email:", error);
       return null;
@@ -211,7 +223,7 @@ export class OverleafUserService {
    */
   public async getUserById(id: string): Promise<OverleafUser | null> {
     try {
-      return await this.mongoManager.findUserById(id);
+      return await this.userRepo.findById(id);
     } catch (error) {
       console.error("Error getting user by ID:", error);
       return null;
@@ -220,6 +232,11 @@ export class OverleafUserService {
 
   /**
    * List users with pagination and filtering
+   *
+   * This method demonstrates the separation of concerns:
+   * - Service layer builds the filter (business logic)
+   * - Repository executes the query (data access)
+   * - Service calculates hasMore (business logic)
    */
   public async listUsers(options: UserListOptions = {}): Promise<{
     users: OverleafUser[];
@@ -227,7 +244,30 @@ export class OverleafUserService {
     hasMore: boolean;
   }> {
     try {
-      return await this.mongoManager.listUsers(options);
+      const { limit = 50, offset = 0, emailFilter, adminOnly } = options;
+
+      // Business logic: Build filter
+      const filter: Record<string, any> = {};
+      if (emailFilter) {
+        filter.email = { $regex: emailFilter, $options: "i" };
+      }
+      if (adminOnly) {
+        filter.isAdmin = true;
+      }
+
+      // Data access: Query via Repository
+      const sort = { signUpDate: -1 as const };
+      const [users, total] = await Promise.all([
+        this.userRepo.findMany(filter, { skip: offset, limit, sort }),
+        this.userRepo.count(filter),
+      ]);
+
+      // Business logic: Calculate hasMore
+      return {
+        users,
+        total,
+        hasMore: offset + users.length < total,
+      };
     } catch (error) {
       console.error("Error listing users:", error);
       return { users: [], total: 0, hasMore: false };
@@ -244,7 +284,24 @@ export class OverleafUserService {
     newUsersThisMonth: number;
   }> {
     try {
-      return await this.mongoManager.getUserStats();
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const [totalUsers, adminUsers, activeUsers, newUsersThisMonth] =
+        await Promise.all([
+          this.userRepo.count(),
+          this.userRepo.countAdmins(),
+          this.userRepo.countActiveUsers(thirtyDaysAgo),
+          this.userRepo.countUsersSignedUpAfter(monthStart),
+        ]);
+
+      return {
+        totalUsers,
+        adminUsers,
+        activeUsers,
+        newUsersThisMonth,
+      };
     } catch (error) {
       console.error("Error getting user stats:", error);
       return {
@@ -266,7 +323,7 @@ export class OverleafUserService {
     }[]
   > {
     try {
-      return await this.redisManager.getUserSessions(userId);
+      return await this.sessionRepo.getUserSessions(userId);
     } catch (error) {
       console.error("Error getting user sessions:", error);
       return [];
@@ -283,7 +340,7 @@ export class OverleafUserService {
     }[]
   > {
     try {
-      return await this.redisManager.getActiveSessions();
+      return await this.sessionRepo.getAllSessions();
     } catch (error) {
       console.error("Error getting active sessions:", error);
       return [];
@@ -299,7 +356,27 @@ export class OverleafUserService {
     expiredSessions: number;
   }> {
     try {
-      return await this.redisManager.getSessionStats();
+      const sessions = await this.sessionRepo.getAllSessions();
+      const now = new Date();
+
+      const stats = sessions.reduce(
+        (acc, session) => {
+          acc.totalSessions++;
+
+          if (session.data.userId) {
+            acc.authenticatedSessions++;
+          }
+
+          if (new Date(session.data.cookie.expires) < now) {
+            acc.expiredSessions++;
+          }
+
+          return acc;
+        },
+        { totalSessions: 0, authenticatedSessions: 0, expiredSessions: 0 },
+      );
+
+      return stats;
     } catch (error) {
       console.error("Error getting session stats:", error);
       return {
@@ -315,7 +392,18 @@ export class OverleafUserService {
    */
   public async clearExpiredSessions(): Promise<number> {
     try {
-      return await this.redisManager.clearExpiredSessions();
+      const sessions = await this.sessionRepo.getAllSessions();
+      const now = new Date();
+
+      const expiredSessionIds = sessions
+        .filter((session) => new Date(session.data.cookie.expires) < now)
+        .map((session) => session.sessionId);
+
+      if (expiredSessionIds.length === 0) {
+        return 0;
+      }
+
+      return await this.sessionRepo.deleteSessions(expiredSessionIds);
     } catch (error) {
       console.error("Error clearing expired sessions:", error);
       return 0;
@@ -330,11 +418,10 @@ export class OverleafUserService {
     limit = 20,
   ): Promise<OverleafUser[]> {
     try {
-      const result = await this.mongoManager.listUsers({
-        emailFilter: emailPattern,
-        limit,
-      });
-      return result.users;
+      const filter = {
+        email: { $regex: emailPattern, $options: "i" },
+      };
+      return await this.userRepo.findMany(filter, { limit });
     } catch (error) {
       console.error("Error searching users:", error);
       return [];
@@ -351,8 +438,8 @@ export class OverleafUserService {
   }> {
     try {
       const [user, projects] = await Promise.all([
-        this.mongoManager.findUserById(userId),
-        this.mongoManager.findProjectsByOwner(userId),
+        this.userRepo.findById(userId),
+        this.projectRepo.findByOwner(userId),
       ]);
 
       const lastProjectUpdate =

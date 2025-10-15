@@ -4,6 +4,7 @@ import "./lib/env";
 const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: true,
+    instrumentationHook: true,
   },
 };
 
