@@ -7,6 +7,7 @@ import {
   IconRefresh,
   IconUser,
   IconUserPlus,
+  IconX,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -36,7 +37,7 @@ import { type RouterOutputs, trpc } from "@/lib/trpc/client";
 import { PortalUsersDataTable } from "./portal-users-table/data-table";
 
 type PortalUserListResponse = RouterOutputs["portalUser"]["list"];
-type PortalUserRow = PortalUserListResponse["users"][number];
+export type PortalUserRow = PortalUserListResponse["users"][number];
 
 type PortalUserLinkState = {
   overleafUserId: string;
@@ -82,7 +83,11 @@ export function PortalUsersList() {
   const [selectedPortalUserId, setSelectedPortalUserId] = useState<
     string | null
   >(null);
-  const [formState, setFormState] = useState({
+  const [formState, setFormState] = useState<{
+    name: string;
+    email: string;
+    role: "user" | "super-admin";
+  }>({
     name: "",
     email: "",
     role: "user",
@@ -94,8 +99,6 @@ export function PortalUsersList() {
   const [overleafSearchTerm, setOverleafSearchTerm] = useState("");
   const [debouncedOverleafSearchTerm, setDebouncedOverleafSearchTerm] =
     useState("");
-  const [manualLinkId, setManualLinkId] = useState("");
-  const [manualLinkEmail, setManualLinkEmail] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -135,13 +138,15 @@ export function PortalUsersList() {
       setFormState({
         name: selectedPortalUser.name,
         email: selectedPortalUser.email,
-        role: selectedPortalUser.role,
+        role: selectedPortalUser.role as "user" | "super-admin",
       });
       setLinkedOverleafUsers(
-        selectedPortalUser.overleafLinks.map((link) => ({
-          overleafUserId: link.overleafUserId,
-          overleafUserEmail: link.overleafUserEmail ?? null,
-        })),
+        selectedPortalUser.overleafLinks.map(
+          (link): PortalUserLinkState => ({
+            overleafUserId: link.overleafUserId,
+            overleafUserEmail: link.overleafUserEmail ?? null,
+          }),
+        ),
       );
     }
   }, [selectedPortalUser]);
@@ -157,8 +162,6 @@ export function PortalUsersList() {
       setLinkedOverleafUsers([]);
       setOverleafSearchTerm("");
       setDebouncedOverleafSearchTerm("");
-      setManualLinkId("");
-      setManualLinkEmail("");
     }
   }, [editDrawerOpen]);
 
@@ -193,24 +196,6 @@ export function PortalUsersList() {
     });
     setOverleafSearchTerm("");
     setDebouncedOverleafSearchTerm("");
-  };
-
-  const handleAddManualLink = () => {
-    const sanitizedId = manualLinkId.trim();
-    const sanitizedEmail = manualLinkEmail.trim();
-
-    if (!sanitizedId) {
-      toast.error("Overleaf user ID is required");
-      return;
-    }
-
-    handleAddOverleafLink({
-      overleafUserId: sanitizedId,
-      overleafUserEmail: sanitizedEmail.length > 0 ? sanitizedEmail : null,
-    });
-
-    setManualLinkId("");
-    setManualLinkEmail("");
   };
 
   const handleSavePortalUser = () => {
@@ -397,7 +382,7 @@ export function PortalUsersList() {
                     onValueChange={(value) =>
                       setFormState((prev) => ({
                         ...prev,
-                        role: value,
+                        role: value as "user" | "super-admin",
                       }))
                     }
                   >
@@ -452,10 +437,11 @@ export function PortalUsersList() {
                         {link.overleafUserEmail ?? link.overleafUserId}
                         <button
                           type="button"
-                          className="text-xs uppercase text-muted-foreground hover:text-destructive"
+                          className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
                           onClick={() => handleRemoveLink(link.overleafUserId)}
+                          aria-label="Remove link"
                         >
-                          Remove
+                          <IconX className="h-3 w-3" />
                         </button>
                       </Badge>
                     ))}
@@ -511,34 +497,6 @@ export function PortalUsersList() {
                           ))}
                         </div>
                       )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="manual-overleaf-id">
-                        Add Overleaf User Manually
-                      </Label>
-                      <Input
-                        id="manual-overleaf-id"
-                        value={manualLinkId}
-                        onChange={(event) =>
-                          setManualLinkId(event.target.value)
-                        }
-                        placeholder="Overleaf user ID"
-                      />
-                      <Input
-                        value={manualLinkEmail}
-                        onChange={(event) =>
-                          setManualLinkEmail(event.target.value)
-                        }
-                        placeholder="Overleaf email (optional)"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddManualLink}
-                        className="w-full"
-                      >
-                        Link Overleaf User
-                      </Button>
                     </div>
                   </div>
                 </div>

@@ -17,11 +17,7 @@ const portalUserIdSchema = z.string().min(1);
 
 const portalUserLinkSchema = z.object({
   overleafUserId: z.string().min(1, "Overleaf user ID is required"),
-  overleafUserEmail: z
-    .string()
-    .email("Invalid Overleaf user email")
-    .optional()
-    .nullable(),
+  overleafUserEmail: z.string().email("Invalid Overleaf user email").nullable(),
 });
 
 const updatePortalUserSchema = z.object({

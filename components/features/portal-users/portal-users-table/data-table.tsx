@@ -4,7 +4,8 @@ import { IconSearch } from "@tabler/icons-react";
 import { DataTable } from "@/components/ui/data-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
-import { createPortalUsersColumns, type PortalUserRow } from "./columns";
+import type { PortalUserRow } from "../portal-users-list";
+import { createPortalUsersColumns } from "./columns";
 
 interface PortalUsersDataTableProps {
   data: PortalUserRow[];

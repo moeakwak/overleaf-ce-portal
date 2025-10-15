@@ -6,19 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import { formatDateCell } from "@/lib/table-utils";
-
-export type PortalUserRow = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  overleafLinks: {
-    overleafUserId: string;
-    overleafUserEmail: string | null;
-  }[];
-};
+import type { PortalUserRow } from "../portal-users-list";
 
 export function createPortalUsersColumns(
   onEdit: (user: PortalUserRow) => void,
