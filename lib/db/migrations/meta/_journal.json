@@ -15,6 +15,13 @@
       "when": 1759053174416,
       "tag": "0001_add_role_to_user",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1760489182316,
+      "tag": "0002_add_portal_overleaf_links",
+      "breakpoints": true
     }
   ]
 }

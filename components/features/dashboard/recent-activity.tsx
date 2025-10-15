@@ -23,7 +23,7 @@ import { trpc } from "@/lib/trpc/client";
 
 export function RecentActivity() {
   const { data: recentUsers, isLoading: usersLoading } =
-    trpc.user.list.useQuery({
+    trpc.overleafUser.list.useQuery({
       limit: 5,
       sortBy: "signUpDate",
       sortOrder: "desc",
@@ -37,18 +37,20 @@ export function RecentActivity() {
 
   return (
     <div className="grid gap-6 px-4 lg:px-6 lg:grid-cols-2">
-      {/* Recent Users */}
+      {/* Recent Overleaf Users */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <IconUser className="size-5" />
-              Recent Users
+              Recent Overleaf Users
             </CardTitle>
-            <CardDescription>Latest user registrations</CardDescription>
+            <CardDescription>
+              Latest Overleaf user registrations
+            </CardDescription>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/admin/users">View All</Link>
+            <Link href="/admin/overleaf-users">View All</Link>
           </Button>
         </CardHeader>
         <CardContent>
@@ -87,7 +89,7 @@ export function RecentActivity() {
                       colSpan={3}
                       className="text-center text-muted-foreground"
                     >
-                      No recent users found
+                      No recent Overleaf users found
                     </TableCell>
                   </TableRow>
                 )}

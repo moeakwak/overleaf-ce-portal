@@ -7,7 +7,7 @@ import {
 import { mockMongoManager, mockUser } from "../mocks/mongodb";
 import { mockRedisManager, mockSessionData } from "../mocks/redis";
 
-// Mock the managers before importing UserService
+// Mock the managers before importing OverleafUserService
 vi.mock("@/server/managers/docker-executor", () => ({
   DockerCommandExecutor: {
     getInstance: () => mockDockerExecutor,
@@ -27,14 +27,16 @@ vi.mock("@/server/managers/redis", () => ({
 }));
 
 // Import after mocking
-const { UserService } = await import("@/server/services/user-service");
+const { OverleafUserService } = await import(
+  "@/server/services/overleaf-user-service"
+);
 
-describe("UserService", () => {
-  let userService: InstanceType<typeof UserService>;
+describe("OverleafUserService", () => {
+  let userService: InstanceType<typeof OverleafUserService>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    userService = new UserService();
+    userService = new OverleafUserService();
   });
 
   describe("createUser", () => {

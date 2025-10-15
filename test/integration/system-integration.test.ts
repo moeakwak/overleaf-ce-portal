@@ -1,19 +1,19 @@
 // @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { OverleafUserService } from "@/server/services/overleaf-user-service";
 import { ProjectService } from "@/server/services/project-service";
 // Import services without mocked env
 import { SystemService } from "@/server/services/system-service";
-import { UserService } from "@/server/services/user-service";
 
 // Integration tests - these run against real Docker/MongoDB/Redis if available
 describe("System Integration Tests", () => {
   let systemService: SystemService;
-  let userService: UserService;
+  let userService: OverleafUserService;
   let projectService: ProjectService;
 
   beforeAll(async () => {
     systemService = new SystemService();
-    userService = new UserService();
+    userService = new OverleafUserService();
     projectService = new ProjectService();
 
     // Initialize system

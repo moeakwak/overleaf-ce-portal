@@ -9,6 +9,7 @@ import {
   IconInnerShadowTop,
   IconReport,
   IconSettings,
+  IconUserShield,
   IconUsers,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -37,9 +38,14 @@ const navigation = {
       icon: IconDashboard,
     },
     {
-      title: "Users",
-      url: "/admin/users",
+      title: "Overleaf Users",
+      url: "/admin/overleaf-users",
       icon: IconUsers,
+    },
+    {
+      title: "Portal Users",
+      url: "/admin/portal-users",
+      icon: IconUserShield,
     },
     {
       title: "Projects",
@@ -54,8 +60,8 @@ const navigation = {
   ],
   navDocuments: [
     {
-      name: "User Export",
-      url: "/admin/users/export",
+      name: "Overleaf User Export",
+      url: "/admin/overleaf-users/export",
       icon: IconFileDescription,
     },
     {

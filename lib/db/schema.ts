@@ -1,5 +1,10 @@
-import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
@@ -75,3 +80,38 @@ export const verification = sqliteTable("verification", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+export const portalUserOverleafLink = sqliteTable(
+  "portal_user_overleaf_link",
+  {
+    portalUserId: text("portal_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    overleafUserId: text("overleaf_user_id").notNull(),
+    overleafUserEmail: text("overleaf_user_email"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .default(sql`(current_timestamp)`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .default(sql`(current_timestamp)`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    pk: primaryKey(table.portalUserId, table.overleafUserId),
+  }),
+);
+
+export const portalUserRelations = relations(user, ({ many }) => ({
+  overleafLinks: many(portalUserOverleafLink),
+}));
+
+export const portalUserOverleafLinkRelations = relations(
+  portalUserOverleafLink,
+  ({ one }) => ({
+    portalUser: one(user, {
+      fields: [portalUserOverleafLink.portalUserId],
+      references: [user.id],
+    }),
+  }),
+);

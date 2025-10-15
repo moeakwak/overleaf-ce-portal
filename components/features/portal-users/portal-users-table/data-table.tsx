@@ -4,10 +4,10 @@ import { IconSearch } from "@tabler/icons-react";
 import { DataTable } from "@/components/ui/data-table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Input } from "@/components/ui/input";
-import { createUsersColumns, type User } from "./columns";
+import { createPortalUsersColumns, type PortalUserRow } from "./columns";
 
-interface UsersDataTableProps {
-  data: User[];
+interface PortalUsersDataTableProps {
+  data: PortalUserRow[];
   loading: boolean;
   currentPage: number;
   totalPages: number;
@@ -15,12 +15,11 @@ interface UsersDataTableProps {
   totalItems: number;
   searchTerm: string;
   onPageChange: (page: number) => void;
-  onSearchChange: (search: string) => void;
-  onViewDetails: (user: User) => void;
-  onDelete: (email: string) => void;
+  onSearchChange: (value: string) => void;
+  onEdit: (user: PortalUserRow) => void;
 }
 
-export function UsersDataTable({
+export function PortalUsersDataTable({
   data,
   loading,
   currentPage,
@@ -30,36 +29,32 @@ export function UsersDataTable({
   searchTerm,
   onPageChange,
   onSearchChange,
-  onViewDetails,
-  onDelete,
-}: UsersDataTableProps) {
-  const columns = createUsersColumns(onViewDetails, onDelete);
+  onEdit,
+}: PortalUsersDataTableProps) {
+  const columns = createPortalUsersColumns(onEdit);
 
   return (
     <div className="space-y-4">
-      {/* Search Controls */}
       <div className="flex items-center gap-2">
         <div className="relative">
           <IconSearch className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by email or name..."
+            placeholder="Search portal users by name or email..."
             value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-8 w-80"
+            onChange={(event) => onSearchChange(event.target.value)}
+            className="w-80 pl-8"
           />
         </div>
       </div>
 
-      {/* Data Table */}
       <DataTable
         columns={columns}
         data={data}
         loading={loading}
-        emptyMessage="No users found"
-        defaultSorting={[{ id: "lastLoggedIn", desc: true }]}
+        emptyMessage="No portal users found"
+        defaultSorting={[{ id: "createdAt", desc: true }]}
       />
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <DataTablePagination
           currentPage={currentPage}

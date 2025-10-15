@@ -8,7 +8,7 @@ import type {
   UserListOptions,
 } from "../types/overleaf";
 
-export class UserService {
+export class OverleafUserService {
   private dockerExecutor: DockerCommandExecutor;
   private mongoManager: MongoDBManager;
   private redisManager: RedisManager;
@@ -145,7 +145,7 @@ export class UserService {
    */
   public async upgradeUserFeatures(
     email: string,
-    features?: Record<string, any>,
+    features?: Record<string, unknown>,
   ): Promise<{
     success: boolean;
     executionResult: ScriptExecutionResult;
@@ -262,7 +262,7 @@ export class UserService {
   public async getUserSessions(userId: string): Promise<
     {
       sessionId: string;
-      data: any;
+      data: unknown;
     }[]
   > {
     try {
@@ -279,7 +279,7 @@ export class UserService {
   public async getActiveSessions(): Promise<
     {
       sessionId: string;
-      data: any;
+      data: unknown;
     }[]
   > {
     try {

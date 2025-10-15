@@ -38,7 +38,7 @@ export function DashboardStats() {
     data: userStats,
     isLoading: userStatsLoading,
     error: userStatsError,
-  } = trpc.user.getStats.useQuery();
+  } = trpc.overleafUser.getStats.useQuery();
   const {
     data: projectStats,
     isLoading: projectStatsLoading,
@@ -73,10 +73,10 @@ export function DashboardStats() {
 
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      {/* Total Users */}
+      {/* Total Overleaf Users */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Total Users</CardDescription>
+          <CardDescription>Total Overleaf Users</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             {isLoading ? (
               <div className="flex items-center gap-2">
@@ -100,13 +100,13 @@ export function DashboardStats() {
           <div className="line-clamp-1 flex gap-2 font-medium">
             {userStats?.newUsersThisMonth
               ? `${userStats.newUsersThisMonth} new this month`
-              : "No new users this month"}{" "}
+              : "No new Overleaf users this month"}{" "}
             <IconTrendingUp className="size-4" />
           </div>
           <div className="text-muted-foreground">
             {userStats?.activeUsers
-              ? `${userStats.activeUsers} active users`
-              : "User activity tracking"}
+              ? `${userStats.activeUsers} active Overleaf users`
+              : "Overleaf user activity tracking"}
           </div>
         </CardFooter>
       </Card>

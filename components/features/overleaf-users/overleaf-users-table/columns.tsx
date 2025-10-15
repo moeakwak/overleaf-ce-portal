@@ -29,7 +29,7 @@ import {
   getUserFullName,
 } from "@/lib/table-utils";
 
-export type User = {
+export type OverleafUserRow = {
   _id: string;
   email: string;
   first_name?: string;
@@ -49,12 +49,13 @@ export type User = {
 };
 
 interface ActionsProps {
-  user: User;
-  onViewDetails: (user: User) => void;
+  user: OverleafUserRow;
+  onViewDetails: (user: OverleafUserRow) => void;
+  onEdit: (user: OverleafUserRow) => void;
   onDelete: (email: string) => void;
 }
 
-function ActionsCell({ user, onViewDetails, onDelete }: ActionsProps) {
+function ActionsCell({ user, onViewDetails, onEdit, onDelete }: ActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -65,11 +66,11 @@ function ActionsCell({ user, onViewDetails, onDelete }: ActionsProps) {
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => onViewDetails(user)}>
           <IconMail className="mr-2 h-4 w-4" />
-          View Details
+          View Overleaf User
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onEdit(user)}>
           <IconEdit className="mr-2 h-4 w-4" />
-          Edit User
+          Edit Overleaf User
         </DropdownMenuItem>
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -78,15 +79,15 @@ function ActionsCell({ user, onViewDetails, onDelete }: ActionsProps) {
               onSelect={(e) => e.preventDefault()}
             >
               <IconTrash className="mr-2 h-4 w-4" />
-              Delete User
+              Delete Overleaf User
             </DropdownMenuItem>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete User</AlertDialogTitle>
+              <AlertDialogTitle>Delete Overleaf User</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete {user.email}? This action cannot
-                be undone.
+                Are you sure you want to delete Overleaf user {user.email}? This
+                action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -106,9 +107,10 @@ function ActionsCell({ user, onViewDetails, onDelete }: ActionsProps) {
 }
 
 export function createUsersColumns(
-  onViewDetails: (user: User) => void,
+  onViewDetails: (user: OverleafUserRow) => void,
+  onEdit: (user: OverleafUserRow) => void,
   onDelete: (email: string) => void,
-): ColumnDef<User>[] {
+): ColumnDef<OverleafUserRow>[] {
   return [
     {
       accessorKey: "email",
@@ -161,7 +163,9 @@ export function createUsersColumns(
         <DataTableColumnHeader column={column} title="Last Login" />
       ),
       cell: ({ row }) => formatDateCell(row.original.lastLoggedIn),
-      sortingFn: createDateSortingFn((user: User) => user.lastLoggedIn),
+      sortingFn: createDateSortingFn(
+        (user: OverleafUserRow) => user.lastLoggedIn,
+      ),
     },
     {
       accessorKey: "loginCount",
@@ -179,7 +183,9 @@ export function createUsersColumns(
         <DataTableColumnHeader column={column} title="Sign Up Date" />
       ),
       cell: ({ row }) => formatDateCell(row.original.signUpDate, "Unknown"),
-      sortingFn: createDateSortingFn((user: User) => user.signUpDate),
+      sortingFn: createDateSortingFn(
+        (user: OverleafUserRow) => user.signUpDate,
+      ),
     },
     {
       id: "actions",
@@ -191,6 +197,7 @@ export function createUsersColumns(
             <ActionsCell
               user={user}
               onViewDetails={onViewDetails}
+              onEdit={onEdit}
               onDelete={onDelete}
             />
           </div>
