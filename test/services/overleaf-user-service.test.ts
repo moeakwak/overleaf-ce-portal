@@ -1,195 +1,251 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  mockDockerExecutor,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import type { OverleafInstance } from "@/server/overleaf/instance";
+import {
+  createMockDockerExecutor,
   mockErrorResult,
   mockSuccessResult,
 } from "../mocks/docker";
-import { mockMongoManager, mockUser } from "../mocks/mongodb";
-import { mockRedisManager, mockSessionData } from "../mocks/redis";
+import {
+  createMockProjectRepository,
+  createMockSessionRepository,
+  createMockUserRepository,
+  mockProject,
+  mockUser,
+} from "../mocks/mongodb";
+import { mockSessionData } from "../mocks/redis";
 
-// Mock the managers before importing OverleafUserService
-vi.mock("@/server/managers/docker-executor", () => ({
-  DockerCommandExecutor: {
-    getInstance: () => mockDockerExecutor,
-  },
+type OverleafUserServiceType =
+  typeof import("@/server/overleaf/services/user.service");
+
+let OverleafUserService: OverleafUserServiceType["OverleafUserService"];
+
+let userRepoMock = createMockUserRepository();
+let projectRepoMock = createMockProjectRepository();
+let sessionRepoMock = createMockSessionRepository();
+
+const userRepoFactory = vi.fn(() => userRepoMock);
+const projectRepoFactory = vi.fn(() => projectRepoMock);
+const sessionRepoFactory = vi.fn(() => sessionRepoMock);
+
+vi.mock("@/server/overleaf/repositories/user.repository", () => ({
+  OverleafUserRepository: vi
+    .fn()
+    .mockImplementation((instance: OverleafInstance) =>
+      userRepoFactory(instance),
+    ),
 }));
 
-vi.mock("@/server/managers/mongodb", () => ({
-  MongoDBManager: {
-    getInstance: () => mockMongoManager,
-  },
+vi.mock("@/server/overleaf/repositories/project.repository", () => ({
+  OverleafProjectRepository: vi
+    .fn()
+    .mockImplementation((instance: OverleafInstance) =>
+      projectRepoFactory(instance),
+    ),
 }));
 
-vi.mock("@/server/managers/redis", () => ({
-  RedisManager: {
-    getInstance: () => mockRedisManager,
-  },
+vi.mock("@/server/overleaf/repositories/session.repository", () => ({
+  OverleafSessionRepository: vi
+    .fn()
+    .mockImplementation((instance: OverleafInstance) =>
+      sessionRepoFactory(instance),
+    ),
 }));
 
-// Import after mocking
-const { OverleafUserService } = await import(
-  "@/server/services/overleaf-user-service"
-);
+beforeAll(async () => {
+  ({ OverleafUserService } = await import(
+    "@/server/overleaf/services/user.service"
+  ));
+});
 
 describe("OverleafUserService", () => {
+  let dockerExecutorMock = createMockDockerExecutor();
+  let instanceMock: OverleafInstance;
   let userService: InstanceType<typeof OverleafUserService>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    userService = new OverleafUserService();
+
+    userRepoMock = createMockUserRepository();
+    projectRepoMock = createMockProjectRepository();
+    sessionRepoMock = createMockSessionRepository();
+    dockerExecutorMock = createMockDockerExecutor();
+
+    instanceMock = {
+      getDockerExecutor: vi.fn(() => dockerExecutorMock),
+    } as unknown as OverleafInstance;
+
+    userService = new OverleafUserService(instanceMock);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe("createUser", () => {
-    it("should create user successfully", async () => {
-      // Setup mocks
-      mockMongoManager.findUserByEmail.mockResolvedValue(null); // User doesn't exist
-      mockDockerExecutor.createUser.mockResolvedValue(mockSuccessResult);
-      mockMongoManager.findUserByEmail
+    it("creates a new user when no existing record", async () => {
+      vi.useFakeTimers();
+
+      userRepoMock.findByEmail
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockUser);
+      dockerExecutorMock.createUser.mockResolvedValue(mockSuccessResult);
 
-      const result = await userService.createUser({
-        email: "test@example.com",
-        isAdmin: false,
+      const createPromise = userService.createUser({
+        email: "new-user@example.com",
+        isAdmin: true,
       });
+
+      await vi.runAllTimersAsync();
+      const result = await createPromise;
 
       expect(result.success).toBe(true);
       expect(result.user).toEqual(mockUser);
-      expect(mockDockerExecutor.createUser).toHaveBeenCalledWith(
-        "test@example.com",
-        false,
+      expect(dockerExecutorMock.createUser).toHaveBeenCalledWith(
+        "new-user@example.com",
+        true,
       );
+      expect(userRepoMock.findByEmail).toHaveBeenCalledTimes(2);
     });
 
-    it("should fail if user already exists", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(mockUser);
+    it("fails when user already exists", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
 
       const result = await userService.createUser({
-        email: "test@example.com",
+        email: mockUser.email,
         isAdmin: false,
       });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("User with this email already exists");
-      expect(mockDockerExecutor.createUser).not.toHaveBeenCalled();
+      expect(dockerExecutorMock.createUser).not.toHaveBeenCalled();
     });
 
-    it("should handle docker execution failure", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(null);
-      mockDockerExecutor.createUser.mockResolvedValue(mockErrorResult);
+    it("surfaces docker execution failure", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(null);
+      dockerExecutorMock.createUser.mockResolvedValue(mockErrorResult);
 
       const result = await userService.createUser({
-        email: "test@example.com",
+        email: "failing@example.com",
         isAdmin: false,
       });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe(mockErrorResult.stderr);
     });
-
-    it("should handle unexpected errors", async () => {
-      mockMongoManager.findUserByEmail.mockRejectedValue(
-        new Error("Database error"),
-      );
-
-      const result = await userService.createUser({
-        email: "test@example.com",
-        isAdmin: false,
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Database error");
-    });
   });
 
   describe("deleteUser", () => {
-    it("should delete user successfully", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(mockUser);
-      mockDockerExecutor.deleteUser.mockResolvedValue(mockSuccessResult);
+    it("deletes an existing user", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
+      dockerExecutorMock.deleteUser.mockResolvedValue(mockSuccessResult);
 
-      const result = await userService.deleteUser("test@example.com", false);
+      const result = await userService.deleteUser(mockUser.email, true);
 
       expect(result.success).toBe(true);
-      expect(mockDockerExecutor.deleteUser).toHaveBeenCalledWith(
-        "test@example.com",
-        false,
+      expect(dockerExecutorMock.deleteUser).toHaveBeenCalledWith(
+        mockUser.email,
+        true,
       );
     });
 
-    it("should fail if user does not exist", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(null);
+    it("fails when user is missing", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(null);
 
-      const result = await userService.deleteUser("test@example.com", false);
+      const result = await userService.deleteUser("missing@example.com", false);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("User not found");
-      expect(mockDockerExecutor.deleteUser).not.toHaveBeenCalled();
-    });
-
-    it("should handle docker execution failure", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(mockUser);
-      mockDockerExecutor.deleteUser.mockResolvedValue(mockErrorResult);
-
-      const result = await userService.deleteUser("test@example.com", false);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe(mockErrorResult.stderr);
+      expect(dockerExecutorMock.deleteUser).not.toHaveBeenCalled();
     });
   });
 
-  describe("getUserByEmail", () => {
-    it("should return user when found", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(mockUser);
+  describe("upgradeUserFeatures", () => {
+    it("invokes docker executor when user exists", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
+      dockerExecutorMock.upgradeUserFeatures.mockResolvedValue(
+        mockSuccessResult,
+      );
 
-      const result = await userService.getUserByEmail("test@example.com");
+      const result = await userService.upgradeUserFeatures(mockUser.email, {
+        github: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(dockerExecutorMock.upgradeUserFeatures).toHaveBeenCalledWith(
+        mockUser.email,
+        { github: true },
+      );
+    });
+
+    it("returns error when user missing", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(null);
+
+      const result = await userService.upgradeUserFeatures(
+        "missing@example.com",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("User not found");
+      expect(dockerExecutorMock.upgradeUserFeatures).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("user retrieval", () => {
+    it("returns user by email", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(mockUser);
+
+      const result = await userService.getUserByEmail(mockUser.email);
 
       expect(result).toEqual(mockUser);
-      expect(mockMongoManager.findUserByEmail).toHaveBeenCalledWith(
-        "test@example.com",
-      );
+      expect(userRepoMock.findByEmail).toHaveBeenCalledWith(mockUser.email);
     });
 
-    it("should return null when user not found", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(null);
+    it("handles missing user gracefully", async () => {
+      userRepoMock.findByEmail.mockResolvedValue(null);
 
-      const result = await userService.getUserByEmail(
-        "nonexistent@example.com",
-      );
-
-      expect(result).toBeNull();
-    });
-
-    it("should handle database errors gracefully", async () => {
-      mockMongoManager.findUserByEmail.mockRejectedValue(
-        new Error("Database error"),
-      );
-
-      const result = await userService.getUserByEmail("test@example.com");
+      const result = await userService.getUserByEmail("missing@example.com");
 
       expect(result).toBeNull();
     });
   });
 
   describe("listUsers", () => {
-    it("should list users with pagination", async () => {
-      const mockResult = {
-        users: [mockUser],
-        total: 1,
-        hasMore: false,
-      };
-      mockMongoManager.listUsers.mockResolvedValue(mockResult);
+    it("builds filter and pagination metadata", async () => {
+      const users = [mockUser];
+      userRepoMock.findMany.mockResolvedValue(users);
+      userRepoMock.count.mockResolvedValue(3);
 
-      const result = await userService.listUsers({ limit: 10, offset: 0 });
-
-      expect(result).toEqual(mockResult);
-      expect(mockMongoManager.listUsers).toHaveBeenCalledWith({
-        limit: 10,
+      const result = await userService.listUsers({
+        limit: 1,
         offset: 0,
+        emailFilter: "@example.com",
+        adminOnly: true,
+      });
+
+      expect(result).toEqual({ users, total: 3, hasMore: true });
+      expect(userRepoMock.findMany).toHaveBeenCalledWith(
+        {
+          email: { $regex: "@example.com", $options: "i" },
+          isAdmin: true,
+        },
+        { skip: 0, limit: 1, sort: { signUpDate: -1 } },
+      );
+      expect(userRepoMock.count).toHaveBeenCalledWith({
+        email: { $regex: "@example.com", $options: "i" },
+        isAdmin: true,
       });
     });
 
-    it("should handle database errors gracefully", async () => {
-      mockMongoManager.listUsers.mockRejectedValue(new Error("Database error"));
+    it("returns empty result on failure", async () => {
+      userRepoMock.findMany.mockRejectedValue(new Error("database down"));
 
       const result = await userService.listUsers();
 
@@ -198,24 +254,24 @@ describe("OverleafUserService", () => {
   });
 
   describe("getUserStats", () => {
-    it("should return user statistics", async () => {
-      const mockStats = {
-        totalUsers: 100,
-        adminUsers: 5,
-        activeUsers: 80,
-        newUsersThisMonth: 10,
-      };
-      mockMongoManager.getUserStats.mockResolvedValue(mockStats);
+    it("aggregates statistics via repository", async () => {
+      userRepoMock.count.mockResolvedValueOnce(10);
+      userRepoMock.countAdmins.mockResolvedValueOnce(2);
+      userRepoMock.countActiveUsers.mockResolvedValueOnce(5);
+      userRepoMock.countUsersSignedUpAfter.mockResolvedValueOnce(3);
 
       const result = await userService.getUserStats();
 
-      expect(result).toEqual(mockStats);
+      expect(result).toEqual({
+        totalUsers: 10,
+        adminUsers: 2,
+        activeUsers: 5,
+        newUsersThisMonth: 3,
+      });
     });
 
-    it("should handle database errors gracefully", async () => {
-      mockMongoManager.getUserStats.mockRejectedValue(
-        new Error("Database error"),
-      );
+    it("falls back to zeros on errors", async () => {
+      userRepoMock.count.mockRejectedValue(new Error("boom"));
 
       const result = await userService.getUserStats();
 
@@ -228,95 +284,108 @@ describe("OverleafUserService", () => {
     });
   });
 
-  describe("getUserSessions", () => {
-    it("should return user sessions", async () => {
-      const mockSessions = [{ sessionId: "session1", data: mockSessionData }];
-      mockRedisManager.getUserSessions.mockResolvedValue(mockSessions);
+  describe("session operations", () => {
+    it("returns all active sessions", async () => {
+      const sessions = [
+        { sessionId: "a", data: mockSessionData },
+        { sessionId: "b", data: mockSessionData },
+      ];
+      sessionRepoMock.getAllSessions.mockResolvedValue(sessions);
 
-      const result = await userService.getUserSessions("user123");
+      const result = await userService.getActiveSessions();
 
-      expect(result).toEqual(mockSessions);
-      expect(mockRedisManager.getUserSessions).toHaveBeenCalledWith("user123");
+      expect(result).toEqual(sessions);
+      expect(sessionRepoMock.getAllSessions).toHaveBeenCalled();
     });
 
-    it("should handle Redis errors gracefully", async () => {
-      mockRedisManager.getUserSessions.mockRejectedValue(
-        new Error("Redis error"),
-      );
+    it("computes session statistics", async () => {
+      const expired = {
+        sessionId: "expired",
+        data: {
+          ...mockSessionData,
+          cookie: {
+            ...mockSessionData.cookie,
+            expires: new Date(Date.now() - 60_000).toISOString(),
+          },
+        },
+      };
 
-      const result = await userService.getUserSessions("user123");
+      sessionRepoMock.getAllSessions.mockResolvedValue([
+        { sessionId: "active", data: mockSessionData },
+        expired,
+      ]);
 
-      expect(result).toEqual([]);
+      const stats = await userService.getSessionStats();
+
+      expect(stats).toEqual({
+        totalSessions: 2,
+        authenticatedSessions: 2,
+        expiredSessions: 1,
+      });
+    });
+
+    it("clears expired sessions", async () => {
+      const expiredSession = {
+        sessionId: "expired",
+        data: {
+          ...mockSessionData,
+          cookie: {
+            ...mockSessionData.cookie,
+            expires: new Date(Date.now() - 60_000).toISOString(),
+          },
+        },
+      };
+
+      sessionRepoMock.getAllSessions.mockResolvedValue([
+        { sessionId: "active", data: mockSessionData },
+        expiredSession,
+      ]);
+      sessionRepoMock.deleteSessions.mockResolvedValue(1);
+
+      const cleared = await userService.clearExpiredSessions();
+
+      expect(cleared).toBe(1);
+      expect(sessionRepoMock.deleteSessions).toHaveBeenCalledWith(["expired"]);
     });
   });
 
   describe("searchUsers", () => {
-    it("should search users by email pattern", async () => {
-      const mockResult = {
-        users: [mockUser],
-        total: 1,
-        hasMore: false,
-      };
-      mockMongoManager.listUsers.mockResolvedValue(mockResult);
+    it("delegates to repository with regex filter", async () => {
+      const users = [mockUser];
+      userRepoMock.findMany.mockResolvedValue(users);
 
-      const result = await userService.searchUsers("test", 10);
+      const result = await userService.searchUsers("test", 5);
 
-      expect(result).toEqual([mockUser]);
-      expect(mockMongoManager.listUsers).toHaveBeenCalledWith({
-        emailFilter: "test",
-        limit: 10,
-      });
+      expect(result).toEqual(users);
+      expect(userRepoMock.findMany).toHaveBeenCalledWith(
+        { email: { $regex: "test", $options: "i" } },
+        { limit: 5 },
+      );
     });
   });
 
-  describe("upgradeUserFeatures", () => {
-    it("should upgrade user features successfully", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(mockUser);
-      mockDockerExecutor.upgradeUserFeatures.mockResolvedValue(
-        mockSuccessResult,
-      );
+  describe("getUserWithProjectsSummary", () => {
+    it("returns project stats for user", async () => {
+      userRepoMock.findById.mockResolvedValue(mockUser);
+      projectRepoMock.findByOwner.mockResolvedValue([
+        mockProject,
+        { ...mockProject, _id: "second", lastUpdated: new Date("2024-01-01") },
+      ]);
 
-      const features = { collaborators: 10 };
-      const result = await userService.upgradeUserFeatures(
-        "test@example.com",
-        features,
-      );
+      const result = await userService.getUserWithProjectsSummary("user123");
 
-      expect(result.success).toBe(true);
-      expect(mockDockerExecutor.upgradeUserFeatures).toHaveBeenCalledWith(
-        "test@example.com",
-        features,
-      );
+      expect(result.user).toEqual(mockUser);
+      expect(result.projectCount).toBe(2);
+      expect(result.lastProjectUpdate).toBeInstanceOf(Date);
+      expect(projectRepoMock.findByOwner).toHaveBeenCalledWith("user123");
     });
 
-    it("should fail if user does not exist", async () => {
-      mockMongoManager.findUserByEmail.mockResolvedValue(null);
+    it("handles repository failures gracefully", async () => {
+      userRepoMock.findById.mockRejectedValue(new Error("mongo unavailable"));
 
-      const result = await userService.upgradeUserFeatures("test@example.com");
+      const result = await userService.getUserWithProjectsSummary("user123");
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("User not found");
-    });
-  });
-
-  describe("clearExpiredSessions", () => {
-    it("should clear expired sessions", async () => {
-      mockRedisManager.clearExpiredSessions.mockResolvedValue(5);
-
-      const result = await userService.clearExpiredSessions();
-
-      expect(result).toBe(5);
-      expect(mockRedisManager.clearExpiredSessions).toHaveBeenCalled();
-    });
-
-    it("should handle Redis errors gracefully", async () => {
-      mockRedisManager.clearExpiredSessions.mockRejectedValue(
-        new Error("Redis error"),
-      );
-
-      const result = await userService.clearExpiredSessions();
-
-      expect(result).toBe(0);
+      expect(result).toEqual({ user: null, projectCount: 0 });
     });
   });
 });

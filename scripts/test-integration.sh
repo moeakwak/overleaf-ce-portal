@@ -54,16 +54,24 @@ echo "✅ Integration tests completed!"
 # Optional: Run a quick health check
 echo "🏥 Running final health check..."
 node -e "
-const { SystemService } = require('./dist/server/services/system-service.js');
-const systemService = new SystemService();
-systemService.getSystemHealth().then(health => {
-  console.log('System Health:', health.overall);
-  console.log('Components:', Object.keys(health.components).map(k =>
-    k + ': ' + health.components[k].status
-  ).join(', '));
-  process.exit(0);
-}).catch(err => {
-  console.error('Health check failed:', err.message);
-  process.exit(1);
-});
+(async () => {
+  try {
+    const { AppContext } = await import('./dist/server/context.js');
+    const appContext = AppContext.getInstance();
+    await appContext.initialize();
+    const systemService = appContext.getOverleafSystemService();
+    const health = await systemService.getSystemHealth();
+
+    console.log('System Health:', health.overall);
+    console.log('Components:', Object.keys(health.components)
+      .map((key) => key + ': ' + health.components[key].status)
+      .join(', '));
+
+    await appContext.cleanup();
+    process.exit(0);
+  } catch (err) {
+    console.error('Health check failed:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
+})();
 "

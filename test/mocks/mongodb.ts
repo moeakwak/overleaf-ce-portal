@@ -50,20 +50,39 @@ export const mockProject: OverleafProject = {
   version: 1,
 };
 
-export const mockMongoManager = {
-  getInstance: vi.fn(),
-  connect: vi.fn(),
-  disconnect: vi.fn(),
-  findUserByEmail: vi.fn(),
-  findUserById: vi.fn(),
-  listUsers: vi.fn(),
-  getUserStats: vi.fn(),
-  findProjectsByOwner: vi.fn(),
-  findProjectById: vi.fn(),
-  listProjects: vi.fn(),
-  getProjectStats: vi.fn(),
+export const createMockUserRepository = () => ({
+  findByEmail: vi.fn(),
+  findById: vi.fn(),
+  findByIds: vi.fn(),
+  findMany: vi.fn(),
+  count: vi.fn(),
+  countAdmins: vi.fn(),
+  countActiveUsers: vi.fn(),
+  countUsersSignedUpAfter: vi.fn(),
+});
+
+export const createMockProjectRepository = () => ({
+  findById: vi.fn(),
+  findByIds: vi.fn(),
+  findByOwner: vi.fn(),
+  findMany: vi.fn(),
+  count: vi.fn(),
+  countProjectsUpdatedAfter: vi.fn(),
   findDocsByProject: vi.fn(),
   findDocById: vi.fn(),
-  healthCheck: vi.fn(),
-  getDatabaseStats: vi.fn(),
-};
+});
+
+export const createMockSessionRepository = () => ({
+  getSession: vi.fn(),
+  getAllSessions: vi.fn(),
+  getUserSessions: vi.fn(),
+  deleteSessions: vi.fn(),
+  getSessionTTL: vi.fn(),
+  getDocumentHead: vi.fn(),
+  getDocumentVersion: vi.fn(),
+  getDocumentChangesCount: vi.fn(),
+  getRecentDocumentChanges: vi.fn(),
+  getPersistedVersionInfo: vi.fn(),
+  getCacheStats: vi.fn(),
+  ping: vi.fn(),
+});

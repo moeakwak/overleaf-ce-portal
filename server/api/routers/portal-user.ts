@@ -16,7 +16,6 @@ const portalUserListSchema = z.object({
 const portalUserIdSchema = z.string().min(1);
 
 const portalUserLinkSchema = z.object({
-  portalUserId: z.string().min(1, "Portal user ID is required"),
   overleafUserId: z.string().min(1, "Overleaf user ID is required"),
   overleafUserEmail: z
     .string()

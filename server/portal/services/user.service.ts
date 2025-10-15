@@ -43,6 +43,11 @@ export type PortalUserOverleafLink = {
   overleafUserEmail: string | null;
 };
 
+export type UpdatePortalUserLinkInput = {
+  overleafUserId: string;
+  overleafUserEmail: string | null;
+};
+
 export type PortalUserStats = {
   totalUsers: number;
   superAdmins: number;
@@ -55,7 +60,7 @@ export type UpdatePortalUserInput = {
   name?: string;
   email?: string;
   role?: string;
-  overleafLinks?: PortalUserOverleafLink[];
+  overleafLinks?: UpdatePortalUserLinkInput[];
 };
 
 export class PortalUserService {

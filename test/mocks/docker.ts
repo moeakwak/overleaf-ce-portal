@@ -1,8 +1,7 @@
 import { vi } from "vitest";
 import type { ScriptExecutionResult } from "@/server/types/overleaf";
 
-export const mockDockerExecutor = {
-  getInstance: vi.fn(),
+export const createMockDockerExecutor = () => ({
   executeScript: vi.fn(),
   createUser: vi.fn(),
   deleteUser: vi.fn(),
@@ -12,7 +11,7 @@ export const mockDockerExecutor = {
   checkRedis: vi.fn(),
   getContainerStatus: vi.fn(),
   listContainers: vi.fn(),
-};
+});
 
 export const mockSuccessResult: ScriptExecutionResult = {
   success: true,

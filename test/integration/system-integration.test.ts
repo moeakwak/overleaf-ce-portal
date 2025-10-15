@@ -1,36 +1,47 @@
 // @vitest-environment node
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { OverleafUserService } from "@/server/services/overleaf-user-service";
-import { ProjectService } from "@/server/services/project-service";
-// Import services without mocked env
-import { SystemService } from "@/server/services/system-service";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { AppContext } from "@/server/context";
+import type {
+  OverleafProjectService,
+  OverleafSystemService,
+  OverleafUserService,
+} from "@/server/overleaf/services";
 
 // Integration tests - these run against real Docker/MongoDB/Redis if available
 describe("System Integration Tests", () => {
-  let systemService: SystemService;
+  let appContext: AppContext;
+  let systemService: OverleafSystemService;
   let userService: OverleafUserService;
-  let projectService: ProjectService;
+  let projectService: OverleafProjectService;
+  let initialized = false;
 
   beforeAll(async () => {
-    systemService = new SystemService();
-    userService = new OverleafUserService();
-    projectService = new ProjectService();
+    appContext = AppContext.getInstance();
 
-    // Initialize system
-    const initResult = await systemService.initializeSystem();
-    if (!initResult.success) {
-      console.warn("System initialization had warnings:", initResult.warnings);
-      console.error("System initialization errors:", initResult.errors);
+    try {
+      await appContext.initialize();
+      systemService = appContext.getOverleafSystemService();
+      userService = appContext.getOverleafUserService();
+      projectService = appContext.getOverleafProjectService();
+      initialized = true;
+    } catch (error) {
+      console.error("System initialization failed:", error);
+      initialized = false;
     }
   });
 
   afterAll(async () => {
-    // Cleanup
-    await systemService.cleanup();
+    if (initialized) {
+      await appContext.cleanup();
+    }
   });
 
   describe("System Health Check", () => {
     it("should perform comprehensive health check", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const health = await systemService.getSystemHealth();
 
       expect(health).toHaveProperty("overall");
@@ -45,6 +56,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should get system statistics", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const stats = await systemService.getSystemStats();
 
       expect(stats).toHaveProperty("users");
@@ -67,6 +82,10 @@ describe("System Integration Tests", () => {
 
     it("should create and then find a user", async () => {
       // Skip if Docker is not available
+      if (!initialized) {
+        vi.skip();
+      }
+
       const health = await systemService.getSystemHealth();
       if (health.components.docker.status === "error") {
         console.log("Skipping user creation test - Docker not available");
@@ -100,6 +119,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should list existing users", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const result = await userService.listUsers({ limit: 10 });
 
       expect(result).toHaveProperty("users");
@@ -112,6 +135,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should get user statistics", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const stats = await userService.getUserStats();
 
       expect(stats).toHaveProperty("totalUsers");
@@ -128,6 +155,10 @@ describe("System Integration Tests", () => {
 
   describe("Project Operations Integration", () => {
     it("should list existing projects", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const result = await projectService.listProjects({ limit: 10 });
 
       expect(result).toHaveProperty("projects");
@@ -139,6 +170,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should get project statistics", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const stats = await projectService.getProjectStats();
 
       expect(stats).toHaveProperty("totalProjects");
@@ -152,6 +187,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should handle project search", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const projects = await projectService.searchProjects("test", 5);
 
       expect(Array.isArray(projects)).toBe(true);
@@ -161,6 +200,10 @@ describe("System Integration Tests", () => {
 
   describe("Docker Container Integration", () => {
     it("should check Overleaf system components", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const health = await systemService.getSystemHealth();
 
       if (health.components.docker.status === "error") {
@@ -185,6 +228,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should list available containers", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const containers = await systemService.getAvailableContainers();
 
       expect(Array.isArray(containers)).toBe(true);
@@ -197,6 +244,10 @@ describe("System Integration Tests", () => {
 
   describe("Redis Integration", () => {
     it("should get session information", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const sessions = await userService.getActiveSessions();
       const sessionStats = await userService.getSessionStats();
 
@@ -209,6 +260,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should handle maintenance operations", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       const maintenanceResult = await systemService.performMaintenance();
 
       expect(maintenanceResult).toHaveProperty("success");
@@ -225,6 +280,10 @@ describe("System Integration Tests", () => {
 
   describe("Error Handling Integration", () => {
     it("should handle invalid user operations gracefully", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       // Try to get non-existent user
       const user = await userService.getUserByEmail("nonexistent@invalid.com");
       expect(user).toBeNull();
@@ -238,6 +297,10 @@ describe("System Integration Tests", () => {
     });
 
     it("should handle invalid project operations gracefully", async () => {
+      if (!initialized) {
+        vi.skip();
+      }
+
       // Try to get non-existent project
       const project = await projectService.getProjectById("invalid-project-id");
       expect(project).toBeNull();

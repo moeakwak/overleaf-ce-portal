@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import SuperJSON from "superjson";
 import type { Session } from "@/lib/auth";
 import { auth } from "@/lib/auth";
+import { AppContext } from "@/server/context";
 
 type CreateContextOptions = {
   headers: Headers;
@@ -53,6 +54,13 @@ const superAdminMiddleware = t.middleware(async ({ ctx, next }) => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(superAdminMiddleware);
+const appContextMiddleware = t.middleware(async ({ next }) => {
+  await AppContext.getInstance().ensureInitialized();
+  return next();
+});
+
+export const protectedProcedure = t.procedure
+  .use(superAdminMiddleware)
+  .use(appContextMiddleware);
 
 export const createCallerFactory = t.createCallerFactory;

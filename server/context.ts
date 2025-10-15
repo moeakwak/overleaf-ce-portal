@@ -51,6 +51,8 @@ export class AppContext {
   > = new Map();
 
   private portalUserService: PortalUserService | null = null;
+  private initialized = false;
+  private initializationPromise: Promise<void> | null = null;
 
   private constructor() {
     // Private constructor for singleton pattern
@@ -77,29 +79,64 @@ export class AppContext {
    * Should be called once during application startup, typically in instrumentation.ts
    */
   public async initialize(): Promise<void> {
+    if (this.initialized) {
+      console.log("[AppContext] Initialization skipped (already initialized)");
+      return;
+    }
+
     console.log("[AppContext] Initializing application context...");
 
-    try {
-      // Create and connect the default Overleaf instance
-      const defaultInstance = createDefaultOverleafInstance();
-      await defaultInstance.connect();
+    const defaultInstance = createDefaultOverleafInstance();
+    let fullyConnected = false;
 
-      // Perform health check to ensure everything is working
+    try {
+      await defaultInstance.connect();
+      fullyConnected = true;
+
       const health = await defaultInstance.healthCheck();
       console.log("[AppContext] Default instance health:", {
         mongodb: health.mongodb.connected,
         redis: health.redis.connected,
         docker: health.docker.containerRunning,
       });
-
-      // Store the instance
-      this.overleafInstances.set("default", defaultInstance);
-
-      console.log("[AppContext] Application context initialized successfully");
     } catch (error) {
-      console.error("[AppContext] Failed to initialize:", error);
-      throw error;
+      console.error(
+        "[AppContext] Failed to fully connect default Overleaf instance:",
+        error,
+      );
+    } finally {
+      await this.registerOverleafInstance(defaultInstance, "default");
     }
+
+    if (fullyConnected) {
+      console.log("[AppContext] Application context initialized successfully");
+    } else {
+      console.warn(
+        "[AppContext] Application context initialized in degraded mode (Overleaf services unavailable)",
+      );
+    }
+  }
+
+  /**
+   * Ensure the application context has been initialized.
+   *
+   * This helper prevents race conditions when multiple requests attempt to
+   * initialize the context concurrently by sharing a single initialization
+   * promise. It also allows on-demand initialization when the instrumentation
+   * hook didn't run yet.
+   */
+  public async ensureInitialized(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    if (!this.initializationPromise) {
+      this.initializationPromise = this.initialize().finally(() => {
+        this.initializationPromise = null;
+      });
+    }
+
+    await this.initializationPromise;
   }
 
   /**
@@ -108,6 +145,11 @@ export class AppContext {
    * Should be called during application shutdown (e.g., SIGTERM handler)
    */
   public async cleanup(): Promise<void> {
+    if (!this.initialized) {
+      console.log("[AppContext] Cleanup skipped (context not initialized)");
+      return;
+    }
+
     console.log("[AppContext] Cleaning up application context...");
 
     try {
@@ -121,12 +163,52 @@ export class AppContext {
       this.overleafInstances.clear();
       this.overleafServiceCache.clear();
       this.portalUserService = null;
+      this.initialized = false;
 
       console.log("[AppContext] Application context cleaned up successfully");
     } catch (error) {
       console.error("[AppContext] Error during cleanup:", error);
       throw error;
     }
+  }
+
+  /**
+   * Register (or replace) an Overleaf instance for a workspace.
+   *
+   * Useful for tests (injecting mocked connections without calling initialize)
+   * or advanced runtime scenarios where a custom instance needs to be provided.
+   */
+  public async registerOverleafInstance(
+    instance: OverleafInstance,
+    workspaceId = "default",
+  ): Promise<void> {
+    const existing = this.overleafInstances.get(workspaceId);
+
+    if (existing && existing !== instance) {
+      try {
+        await existing.disconnect();
+      } catch (error) {
+        console.warn(
+          `[AppContext] Failed to disconnect existing instance for workspace ${workspaceId}:`,
+          error,
+        );
+      }
+    }
+
+    this.overleafInstances.set(workspaceId, instance);
+    this.overleafServiceCache.delete(workspaceId);
+    this.initialized = true;
+
+    console.log(
+      `[AppContext] Registered Overleaf instance for workspace: ${workspaceId}`,
+    );
+  }
+
+  /**
+   * Returns whether the context has been initialized.
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
   }
 
   /**
