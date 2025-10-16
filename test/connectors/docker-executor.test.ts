@@ -67,7 +67,7 @@ describe("DockerCommandExecutor", () => {
       return stream;
     });
 
-    const result = await executor.executeScript("test-script.mjs", ["--flag"]);
+    const result = await executor.executeScript("test-script", ["--flag"]);
 
     expect(result.success).toBe(true);
     expect(result.stdout).toBe("hello world");
@@ -75,9 +75,9 @@ describe("DockerCommandExecutor", () => {
     expect(result.exitCode).toBe(0);
     expect(containerMock.exec).toHaveBeenCalledWith({
       Cmd: [
-        "node",
-        "/overleaf/services/web/modules/server-ce-scripts/scripts/test-script.mjs",
-        "--flag",
+        "/bin/bash",
+        "-ce",
+        "cd /overleaf/services/web && node modules/server-ce-scripts/scripts/test-script --flag",
       ],
       AttachStdout: true,
       AttachStderr: true,
@@ -91,7 +91,7 @@ describe("DockerCommandExecutor", () => {
       State: { Running: false, Status: "stopped" },
     });
 
-    const result = await executor.executeScript("test-script.mjs");
+    const result = await executor.executeScript("test-script");
 
     expect(result.success).toBe(false);
     expect(result.stderr).toContain("is not running");
@@ -103,7 +103,7 @@ describe("DockerCommandExecutor", () => {
     const stream = createStream();
     execMock.start.mockResolvedValue(stream);
 
-    const resultPromise = executor.executeScript("hanging.mjs", [], {
+    const resultPromise = executor.executeScript("hanging", [], {
       timeout: 50,
     });
     const expectation = expect(resultPromise).rejects.toThrow("timed out");
@@ -127,7 +127,27 @@ describe("DockerCommandExecutor", () => {
 
     expect(executeSpy).toHaveBeenCalledWith(
       "create-user.mjs",
-      ["--email", "admin@example.com", "--admin"],
+      ["--admin", "--email=admin@example.com"],
+      { timeout: 60000 },
+    );
+
+    executeSpy.mockRestore();
+  });
+
+  it("builds command arguments for createUser without admin flag", async () => {
+    const executeSpy = vi.spyOn(executor, "executeScript").mockResolvedValue({
+      success: true,
+      stdout: "",
+      stderr: "",
+      exitCode: 0,
+      executionTime: 10,
+    });
+
+    await executor.createUser("user@example.com", false);
+
+    expect(executeSpy).toHaveBeenCalledWith(
+      "create-user.mjs",
+      ["--email=user@example.com"],
       { timeout: 60000 },
     );
 

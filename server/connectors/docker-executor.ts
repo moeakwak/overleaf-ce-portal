@@ -31,6 +31,9 @@ export class DockerCommandExecutor {
 
   /**
    * Execute a script inside the Sharelatex container
+   *
+   * This follows the official Overleaf CE toolkit pattern:
+   * `/bin/bash -ce "cd /overleaf/services/web && node modules/server-ce-scripts/scripts/{script} {args}"`
    */
   public async executeScript(
     scriptPath: string,
@@ -48,12 +51,18 @@ export class DockerCommandExecutor {
         throw new Error(`Container ${this.containerName} is not running`);
       }
 
-      // Prepare the command
-      const cmd = [
-        "node",
-        `/overleaf/services/web/modules/server-ce-scripts/scripts/${scriptPath}`,
+      // Build the inner command that will be executed by bash
+      // First part: cd command
+      // Second part: node command with script and its arguments joined by spaces
+      const nodeCommand = [
+        `node modules/server-ce-scripts/scripts/${scriptPath}`,
         ...args,
-      ];
+      ].join(" ");
+
+      const innerCommand = `cd /overleaf/services/web && ${nodeCommand}`;
+
+      // Prepare the command following official pattern: /bin/bash -ce "command"
+      const cmd = ["/bin/bash", "-ce", innerCommand];
 
       // Create exec instance
       const exec = await container.exec({
@@ -120,15 +129,22 @@ export class DockerCommandExecutor {
 
   /**
    * Execute create-user script
+   *
+   * Official command format:
+   * `node modules/server-ce-scripts/scripts/create-user.mjs --admin --email=joe@example.com`
    */
   public async createUser(
     email: string,
     isAdmin = false,
   ): Promise<ScriptExecutionResult> {
-    const args = ["--email", email];
+    const args: string[] = [];
+
     if (isAdmin) {
       args.push("--admin");
     }
+
+    // Use --email=value format as shown in official docs
+    args.push(`--email=${email}`);
 
     return this.executeScript("create-user.mjs", args, {
       timeout: 60000, // 1 minute timeout for user creation
@@ -142,7 +158,11 @@ export class DockerCommandExecutor {
     email: string,
     skipEmail = false,
   ): Promise<ScriptExecutionResult> {
-    const args = ["--email", email];
+    const args: string[] = [];
+
+    // Use --email=value format for consistency
+    args.push(`--email=${email}`);
+
     if (skipEmail) {
       args.push("--skip-email");
     }
@@ -189,7 +209,7 @@ export class DockerCommandExecutor {
       args.push("--list");
     }
 
-    return this.executeScript("export-user-projects.mjs", args, {
+    return this.executeScript("export-user-projects", args, {
       timeout: 300000, // 5 minutes timeout for export operations
     });
   }
