@@ -6,6 +6,7 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
+  IconLayoutDashboard,
   IconSettings,
   IconUserShield,
   IconUsers,
@@ -65,6 +66,11 @@ const navigation = {
       title: "Help",
       url: "/admin/help",
       icon: IconHelp,
+    },
+    {
+      title: "User Dashboard",
+      url: "/",
+      icon: IconLayoutDashboard,
     },
   ],
 };

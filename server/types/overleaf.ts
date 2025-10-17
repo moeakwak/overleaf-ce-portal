@@ -29,6 +29,7 @@ export const OverleafUserSchema = z.object({
   lastLoggedIn: z.date().optional(),
   lastActive: z.date().optional(),
   loginCount: z.number().default(0),
+  hashedPassword: z.string().optional(),
 });
 
 export type OverleafUser = z.infer<typeof OverleafUserSchema>;

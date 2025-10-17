@@ -12,6 +12,11 @@ export const runtime = "nodejs";
 
 import { AppContext } from "./server/context";
 
+const nodeProcess: NodeJS.Process | null =
+  typeof globalThis.process !== "undefined"
+    ? (globalThis.process as NodeJS.Process)
+    : null;
+
 const signalHandlers: Partial<
   Record<"SIGTERM" | "SIGINT", NodeJS.SignalsListener>
 > = {};
@@ -22,6 +27,13 @@ let unhandledRejectionHandler:
 let cleanupInProgress = false;
 
 const registerLifecycleHandlers = (cleanup: () => Promise<void>) => {
+  if (!nodeProcess) {
+    console.warn(
+      "[Instrumentation] Node.js process API unavailable; skipping lifecycle handlers.",
+    );
+    return;
+  }
+
   cleanupInProgress = false;
 
   const runCleanup = async () => {
@@ -34,17 +46,17 @@ const registerLifecycleHandlers = (cleanup: () => Promise<void>) => {
     try {
       await cleanup();
       console.log("[Instrumentation] Application shut down successfully");
-      process.exit(0);
+      nodeProcess.exit(0);
     } catch (error) {
       console.error("[Instrumentation] Error during shutdown:", error);
-      process.exit(1);
+      nodeProcess.exit(1);
     }
   };
 
   for (const signal of ["SIGTERM", "SIGINT"] as const) {
     const existingHandler = signalHandlers[signal];
     if (existingHandler) {
-      process.removeListener(signal, existingHandler);
+      nodeProcess.removeListener(signal, existingHandler);
     }
 
     const handler: NodeJS.SignalsListener = () => {
@@ -52,20 +64,20 @@ const registerLifecycleHandlers = (cleanup: () => Promise<void>) => {
     };
 
     signalHandlers[signal] = handler;
-    process.once(signal, handler);
+    nodeProcess.once(signal, handler);
   }
 
   if (uncaughtExceptionHandler) {
-    process.removeListener("uncaughtException", uncaughtExceptionHandler);
+    nodeProcess.removeListener("uncaughtException", uncaughtExceptionHandler);
   }
   uncaughtExceptionHandler = (error: Error) => {
     console.error("[Instrumentation] Uncaught exception:", error);
     void runCleanup();
   };
-  process.once("uncaughtException", uncaughtExceptionHandler);
+  nodeProcess.once("uncaughtException", uncaughtExceptionHandler);
 
   if (unhandledRejectionHandler) {
-    process.removeListener("unhandledRejection", unhandledRejectionHandler);
+    nodeProcess.removeListener("unhandledRejection", unhandledRejectionHandler);
   }
   unhandledRejectionHandler = (reason: unknown, promise: Promise<unknown>) => {
     console.error(
@@ -76,7 +88,7 @@ const registerLifecycleHandlers = (cleanup: () => Promise<void>) => {
     );
     void runCleanup();
   };
-  process.once("unhandledRejection", unhandledRejectionHandler);
+  nodeProcess.once("unhandledRejection", unhandledRejectionHandler);
 };
 
 /**
@@ -89,7 +101,7 @@ const registerLifecycleHandlers = (cleanup: () => Promise<void>) => {
  */
 export async function register() {
   // Only run on server side
-  if (process.env.NEXT_RUNTIME === "nodejs") {
+  if (nodeProcess?.env?.NEXT_RUNTIME === "nodejs") {
     const appContext = AppContext.getInstance();
 
     if (appContext.isInitialized()) {

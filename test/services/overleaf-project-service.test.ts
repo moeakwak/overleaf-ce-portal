@@ -22,9 +22,13 @@ let projectRepoMock = createMockProjectRepository();
 let userRepoMock = createMockUserRepository();
 let sessionRepoMock = createMockSessionRepository();
 
-const projectRepoFactory = vi.fn(() => projectRepoMock);
-const userRepoFactory = vi.fn(() => userRepoMock);
-const sessionRepoFactory = vi.fn(() => sessionRepoMock);
+const projectRepoFactory = vi.fn(
+  (_instance?: OverleafInstance) => projectRepoMock,
+);
+const userRepoFactory = vi.fn((_instance?: OverleafInstance) => userRepoMock);
+const sessionRepoFactory = vi.fn(
+  (_instance?: OverleafInstance) => sessionRepoMock,
+);
 
 vi.mock("@/server/overleaf/repositories/project.repository", () => ({
   OverleafProjectRepository: vi
@@ -105,6 +109,7 @@ describe("OverleafProjectService", () => {
 
       const result = await projectService.exportUserProjects({
         userId: "missing",
+        outputPath: "/tmp/export.zip",
       });
 
       expect(result.success).toBe(false);

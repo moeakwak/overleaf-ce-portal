@@ -31,15 +31,35 @@ const t = initTRPC.context<TRPCContext>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
-const superAdminMiddleware = t.middleware(async ({ ctx, next }) => {
-  if (!ctx.session) {
+const sessionMiddleware = t.middleware(async ({ ctx, next }) => {
+  const session = ctx.session;
+
+  if (!session) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "Authentication required",
     });
   }
 
-  if (ctx.session.user.role !== "super-admin") {
+  return next({
+    ctx: {
+      ...ctx,
+      session,
+    },
+  });
+});
+
+const superAdminMiddleware = t.middleware(async ({ ctx, next }) => {
+  const session = ctx.session;
+
+  if (!session) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authentication required",
+    });
+  }
+
+  if (session.user.role !== "super-admin") {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Administrator privileges are required",
@@ -49,7 +69,7 @@ const superAdminMiddleware = t.middleware(async ({ ctx, next }) => {
   return next({
     ctx: {
       ...ctx,
-      session: ctx.session,
+      session,
     },
   });
 });
@@ -59,7 +79,12 @@ const appContextMiddleware = t.middleware(async ({ next }) => {
   return next();
 });
 
+export const authenticatedProcedure = t.procedure
+  .use(sessionMiddleware)
+  .use(appContextMiddleware);
+
 export const protectedProcedure = t.procedure
+  .use(sessionMiddleware)
   .use(superAdminMiddleware)
   .use(appContextMiddleware);
 

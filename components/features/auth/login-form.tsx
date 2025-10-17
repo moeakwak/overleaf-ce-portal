@@ -1,7 +1,6 @@
 "use client";
 
 import { IconLoader } from "@tabler/icons-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -143,15 +142,7 @@ export function LoginForm({
                     />
                   </div>
                   <div className="grid gap-3">
-                    <div className="flex items-center">
-                      <Label htmlFor="password">Password</Label>
-                      <Link
-                        href="#"
-                        className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                      >
-                        Forgot your password?
-                      </Link>
-                    </div>
+                    <Label htmlFor="password">Password</Label>
                     <Input
                       id="password"
                       type="password"
@@ -176,12 +167,6 @@ export function LoginForm({
                       )}
                     </Button>
                   </div>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  Don&apos;t have an account?{" "}
-                  <Link href="#" className="underline underline-offset-4">
-                    Sign up
-                  </Link>
                 </div>
               </form>
             ) : (

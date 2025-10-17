@@ -18,9 +18,13 @@ let userRepoMock = createMockUserRepository();
 let projectRepoMock = createMockProjectRepository();
 let sessionRepoMock = createMockSessionRepository();
 
-const userRepoFactory = vi.fn(() => userRepoMock);
-const projectRepoFactory = vi.fn(() => projectRepoMock);
-const sessionRepoFactory = vi.fn(() => sessionRepoMock);
+const userRepoFactory = vi.fn((_instance?: OverleafInstance) => userRepoMock);
+const projectRepoFactory = vi.fn(
+  (_instance?: OverleafInstance) => projectRepoMock,
+);
+const sessionRepoFactory = vi.fn(
+  (_instance?: OverleafInstance) => sessionRepoMock,
+);
 
 vi.mock("@/server/overleaf/repositories/user.repository", () => ({
   OverleafUserRepository: vi

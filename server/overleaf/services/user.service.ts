@@ -233,6 +233,56 @@ export class OverleafUserService {
   }
 
   /**
+   * Verify user credentials against stored hashed password
+   */
+  public async verifyUserPassword(
+    email: string,
+    password: string,
+  ): Promise<{
+    success: boolean;
+    user?: OverleafUser;
+    error?: string;
+  }> {
+    try {
+      const user = await this.userRepo.findByEmail(email);
+      if (!user) {
+        return {
+          success: false,
+          error: "User not found",
+        };
+      }
+
+      if (typeof user.hashedPassword !== "string") {
+        return {
+          success: false,
+          error:
+            "Password is not set for this Overleaf account. Please reset it first.",
+        };
+      }
+
+      const isValid = await bcrypt.compare(password, user.hashedPassword);
+
+      if (!isValid) {
+        return {
+          success: false,
+          error: "Invalid email or password",
+        };
+      }
+
+      return {
+        success: true,
+        user,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
    * Get user by email
    */
   public async getUserByEmail(email: string): Promise<OverleafUser | null> {
@@ -253,6 +303,19 @@ export class OverleafUserService {
     } catch (error) {
       console.error("Error getting user by ID:", error);
       return null;
+    }
+  }
+
+  public async getUsersByIds(ids: string[]): Promise<OverleafUser[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    try {
+      return await this.userRepo.findByIds(ids);
+    } catch (error) {
+      console.error("Error getting users by IDs:", error);
+      return [];
     }
   }
 

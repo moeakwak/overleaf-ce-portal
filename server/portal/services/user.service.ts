@@ -204,6 +204,27 @@ export class PortalUserService {
     return this.getPortalUserByIdWithConnection(portalUserId, db);
   }
 
+  public async findPortalUserByOverleafUserId(
+    overleafUserId: string,
+  ): Promise<{ id: string; name: string; email: string } | null> {
+    const [result] = await db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      })
+      .from(portalUserOverleafLink)
+      .innerJoin(user, eq(user.id, portalUserOverleafLink.portalUserId))
+      .where(eq(portalUserOverleafLink.overleafUserId, overleafUserId))
+      .limit(1);
+
+    if (!result) {
+      return null;
+    }
+
+    return result;
+  }
+
   public async updatePortalUser(
     input: UpdatePortalUserInput,
   ): Promise<PortalUserWithLinks | null> {
