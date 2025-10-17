@@ -225,6 +225,15 @@ export class PortalUserService {
     return result;
   }
 
+  public async removeLinksByOverleafUserId(
+    overleafUserId: string,
+  ): Promise<void> {
+    await db
+      .delete(portalUserOverleafLink)
+      .where(eq(portalUserOverleafLink.overleafUserId, overleafUserId))
+      .run();
+  }
+
   public async updatePortalUser(
     input: UpdatePortalUserInput,
   ): Promise<PortalUserWithLinks | null> {

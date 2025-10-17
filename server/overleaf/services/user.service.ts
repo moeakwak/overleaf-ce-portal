@@ -108,6 +108,7 @@ export class OverleafUserService {
   ): Promise<{
     success: boolean;
     executionResult: ScriptExecutionResult;
+    deletedUserId?: string;
     error?: string;
   }> {
     try {
@@ -127,6 +128,8 @@ export class OverleafUserService {
         };
       }
 
+      const overleafUserId = user._id;
+
       // Execute delete-user script
       const executionResult = await this.dockerExecutor.deleteUser(
         email,
@@ -136,6 +139,7 @@ export class OverleafUserService {
       return {
         success: executionResult.success,
         executionResult,
+        deletedUserId: executionResult.success ? overleafUserId : undefined,
         error: executionResult.success ? undefined : executionResult.stderr,
       };
     } catch (error) {

@@ -142,6 +142,7 @@ describe("OverleafUserService", () => {
       const result = await userService.deleteUser(mockUser.email, true);
 
       expect(result.success).toBe(true);
+      expect(result.deletedUserId).toBe(mockUser._id);
       expect(dockerExecutorMock.deleteUser).toHaveBeenCalledWith(
         mockUser.email,
         true,
@@ -155,6 +156,7 @@ describe("OverleafUserService", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("User not found");
+      expect(result.deletedUserId).toBeUndefined();
       expect(dockerExecutorMock.deleteUser).not.toHaveBeenCalled();
     });
   });

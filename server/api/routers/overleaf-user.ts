@@ -183,6 +183,14 @@ export const overleafUserRouter = router({
           });
         }
 
+        const portalUserService = appContext.getPortalUserService();
+
+        if (result.deletedUserId) {
+          await portalUserService.removeLinksByOverleafUserId(
+            result.deletedUserId,
+          );
+        }
+
         return {
           success: true,
           message: "User deleted successfully",
