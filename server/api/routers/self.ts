@@ -15,6 +15,26 @@ const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters long");
 
+// Portal password policy: >8 chars (i.e., at least 9) and at least three of the four categories
+// uppercase, lowercase, digit, special character.
+const portalPasswordSchema = z
+  .string()
+  .min(9, "Password must be at least 9 characters long")
+  .refine(
+    (value) => {
+      let categories = 0;
+      if (/[A-Z]/.test(value)) categories += 1;
+      if (/[a-z]/.test(value)) categories += 1;
+      if (/[0-9]/.test(value)) categories += 1;
+      if (/[^A-Za-z0-9]/.test(value)) categories += 1;
+      return categories >= 3;
+    },
+    {
+      message:
+        "Password must include at least three of: uppercase, lowercase, number, special character",
+    },
+  );
+
 function normalizeOverleafUserId(value: unknown): string {
   if (typeof value === "string") {
     return value;
@@ -538,7 +558,7 @@ export const selfRouter = router({
     .input(
       z.object({
         currentPassword: passwordSchema,
-        newPassword: passwordSchema,
+        newPassword: portalPasswordSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -577,7 +597,7 @@ export const selfRouter = router({
   setPortalPassword: authenticatedProcedure
     .input(
       z.object({
-        newPassword: passwordSchema,
+        newPassword: portalPasswordSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -636,19 +656,22 @@ export const selfRouter = router({
           message: "Overleaf account is not linked to the current user",
         });
       }
-
-      const overleafUser =
-        await overleafUserService.getUserById(normalizedTargetId);
-
-      if (!overleafUser) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Overleaf account not found",
-        });
+      // Prefer updating by email stored in link to avoid _id representation issues
+      let targetEmail = link.overleafUserEmail ?? null;
+      if (!targetEmail) {
+        const overleafUser =
+          await overleafUserService.getUserById(normalizedTargetId);
+        if (!overleafUser) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Overleaf account not found",
+          });
+        }
+        targetEmail = overleafUser.email;
       }
 
       const result = await overleafUserService.setUserPassword(
-        overleafUser.email,
+        targetEmail,
         input.password,
       );
 

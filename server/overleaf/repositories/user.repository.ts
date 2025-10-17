@@ -1,4 +1,5 @@
 import type { Collection } from "mongodb";
+import { ObjectId } from "mongodb";
 import type { OverleafUser } from "../../types/overleaf";
 import { BaseOverleafRepository } from "./base.repository";
 
@@ -29,7 +30,16 @@ export class OverleafUserRepository extends BaseOverleafRepository {
    */
   async findById(id: string): Promise<OverleafUser | null> {
     const collection = this.getUsersCollection();
-    return await collection.findOne({ _id: id });
+    // Support either string _id or ObjectId _id in the Overleaf users collection
+    const candidates: any[] = [id];
+    if (typeof id === "string" && ObjectId.isValid(id)) {
+      try {
+        candidates.push(new ObjectId(id));
+      } catch {
+        // ignore invalid ObjectId construction; stick to string
+      }
+    }
+    return await collection.findOne({ _id: { $in: candidates } });
   }
 
   /**
@@ -37,7 +47,19 @@ export class OverleafUserRepository extends BaseOverleafRepository {
    */
   async findByIds(ids: string[]): Promise<OverleafUser[]> {
     const collection = this.getUsersCollection();
-    return await collection.find({ _id: { $in: ids } }).toArray();
+    // Expand ids to include possible ObjectId representations
+    const expanded: any[] = [];
+    for (const id of ids) {
+      expanded.push(id);
+      if (typeof id === "string" && ObjectId.isValid(id)) {
+        try {
+          expanded.push(new ObjectId(id));
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return await collection.find({ _id: { $in: expanded } }).toArray();
   }
 
   /**

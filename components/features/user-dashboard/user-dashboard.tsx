@@ -191,6 +191,24 @@ export function UserDashboard({ session }: UserDashboardProps) {
     confirm: "",
   });
 
+  function validatePortalPassword(value: string) {
+    const reasons: string[] = [];
+    if (!value || value.length < 9) {
+      reasons.push("At least 9 characters");
+    }
+    let categories = 0;
+    if (/[A-Z]/.test(value)) categories += 1;
+    if (/[a-z]/.test(value)) categories += 1;
+    if (/[0-9]/.test(value)) categories += 1;
+    if (/[^A-Za-z0-9]/.test(value)) categories += 1;
+    if (categories < 3) {
+      reasons.push(
+        "Include at least 3 of: uppercase, lowercase, number, special character",
+      );
+    }
+    return { isValid: reasons.length === 0, reasons };
+  }
+
   const handlePortalPasswordSuccess = async (message: string) => {
     toast.success(message);
     setPortalPasswordForm({ current: "", next: "", confirm: "" });
@@ -410,8 +428,11 @@ export function UserDashboard({ session }: UserDashboardProps) {
       return;
     }
 
-    if (!portalPasswordForm.next || portalPasswordForm.next.length < 8) {
-      toast.error("New password must be at least 8 characters long");
+    const policy = validatePortalPassword(portalPasswordForm.next);
+    if (!policy.isValid) {
+      toast.error(
+        `New password does not meet requirements: ${policy.reasons.join("; ")}`,
+      );
       return;
     }
 
@@ -799,6 +820,10 @@ export function UserDashboard({ session }: UserDashboardProps) {
                 placeholder="Enter New Password"
                 disabled={portalPasswordMutationPending}
               />
+              <p className="text-xs text-muted-foreground">
+                Must be at least 9 characters and include at least three of:
+                uppercase, lowercase, number, special character.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="portal-confirm-password">
