@@ -1,5 +1,10 @@
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { account } from "@/lib/db/schema";
+import { env } from "@/lib/env";
 import { AppContext } from "@/server/context";
 import type { OverleafUser } from "@/server/types/overleaf";
 import { authenticatedProcedure, router } from "../trpc";
@@ -77,6 +82,19 @@ export const selfRouter = router({
     const overleafUserService = appContext.getOverleafUserService();
 
     const portalUser = await getCurrentPortalUser(session.user.id);
+    const portalAccounts = await db
+      .select({
+        providerId: account.providerId,
+        accountId: account.accountId,
+        createdAt: account.createdAt,
+        password: account.password,
+      })
+      .from(account)
+      .where(eq(account.userId, portalUser.id));
+    const hasCredentialPassword = portalAccounts.some(
+      (item) => item.providerId === "credential" && item.password,
+    );
+
     const links = (portalUser.overleafLinks ?? []).map((link) => ({
       overleafUserId: normalizeOverleafUserId(link.overleafUserId),
       overleafUserEmail: link.overleafUserEmail,
@@ -137,6 +155,8 @@ export const selfRouter = router({
         email: portalUser.email,
         role: portalUser.role,
         overleafLinks: portalUser.overleafLinks,
+        createdAt: portalUser.createdAt,
+        updatedAt: portalUser.updatedAt,
       },
       linkedAccounts,
       primaryEmailStatus: {
@@ -146,6 +166,20 @@ export const selfRouter = router({
           : null,
         linkedToCurrentUser,
         linkedByOther,
+      },
+      auth: {
+        passwordLoginEnabled: env.ENABLE_PASSWORD_LOGIN,
+        oidcLoginEnabled: env.ENABLE_OIDC_LOGIN,
+        oidcProviderId: env.OIDC_PROVIDER_ID,
+        oidcProviderName: env.OIDC_PROVIDER_NAME,
+        oidcConnections: portalAccounts
+          .filter((item) => item.providerId === env.OIDC_PROVIDER_ID)
+          .map((item) => ({
+            providerId: item.providerId,
+            accountId: item.accountId,
+            linkedAt: item.createdAt,
+          })),
+        hasPassword: hasCredentialPassword,
       },
     };
   }),
@@ -328,6 +362,200 @@ export const selfRouter = router({
       return {
         success: true,
         overleafUser: mapOverleafUserToSummary(verifiedUser),
+      };
+    }),
+
+  linkPrimaryOverleafAccount: authenticatedProcedure.mutation(
+    async ({ ctx }) => {
+      const session = ctx.session;
+      const overleafUserService = appContext.getOverleafUserService();
+      const portalUserService = appContext.getPortalUserService();
+
+      const portalUser = await getCurrentPortalUser(session.user.id);
+      const normalizedEmail = portalUser.email.trim().toLowerCase();
+
+      const existingUser =
+        await overleafUserService.getUserByEmail(normalizedEmail);
+
+      if (!existingUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Overleaf account not found for portal email",
+        });
+      }
+
+      const existingUserId = normalizeOverleafUserId(existingUser._id);
+
+      const linkOwner =
+        await portalUserService.findPortalUserByOverleafUserId(existingUserId);
+
+      if (linkOwner && linkOwner.id !== portalUser.id) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `Overleaf account is already linked to ${linkOwner.name}`,
+        });
+      }
+
+      const existingLinks = (portalUser.overleafLinks ?? []).map((link) => ({
+        overleafUserId: normalizeOverleafUserId(link.overleafUserId),
+        overleafUserEmail: link.overleafUserEmail,
+      }));
+
+      const alreadyLinked = existingLinks.some(
+        (link) => link.overleafUserId === existingUserId,
+      );
+
+      if (!alreadyLinked) {
+        const updated = await portalUserService.updatePortalUser({
+          id: portalUser.id,
+          overleafLinks: [
+            ...existingLinks,
+            {
+              overleafUserId: existingUserId,
+              overleafUserEmail: existingUser.email,
+            },
+          ],
+        });
+
+        if (!updated) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to save Overleaf account link",
+          });
+        }
+      }
+
+      return {
+        success: true,
+        overleafUser: mapOverleafUserToSummary(existingUser),
+      };
+    },
+  ),
+
+  unlinkOverleafAccount: authenticatedProcedure
+    .input(
+      z.object({
+        overleafUserId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const session = ctx.session;
+      const portalUserService = appContext.getPortalUserService();
+
+      const portalUser = await getCurrentPortalUser(session.user.id);
+      const normalizedTargetId = normalizeOverleafUserId(input.overleafUserId);
+
+      const existingLinks = (portalUser.overleafLinks ?? []).map((link) => ({
+        overleafUserId: normalizeOverleafUserId(link.overleafUserId),
+        overleafUserEmail: link.overleafUserEmail,
+      }));
+
+      const linkExists = existingLinks.some(
+        (link) => link.overleafUserId === normalizedTargetId,
+      );
+
+      if (!linkExists) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Overleaf account link not found",
+        });
+      }
+
+      const updatedLinks = existingLinks.filter(
+        (link) => link.overleafUserId !== normalizedTargetId,
+      );
+
+      const updated = await portalUserService.updatePortalUser({
+        id: portalUser.id,
+        overleafLinks: updatedLinks,
+      });
+
+      if (!updated) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to remove Overleaf account link",
+        });
+      }
+
+      return {
+        success: true,
+      };
+    }),
+
+  changePortalPassword: authenticatedProcedure
+    .input(
+      z.object({
+        currentPassword: passwordSchema,
+        newPassword: passwordSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!env.ENABLE_PASSWORD_LOGIN) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Password login is disabled",
+        });
+      }
+
+      try {
+        await auth.api.changePassword({
+          headers: ctx.headers,
+          body: {
+            currentPassword: input.currentPassword,
+            newPassword: input.newPassword,
+            revokeOtherSessions: true,
+          },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to update portal password";
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message,
+        });
+      }
+
+      return {
+        success: true,
+      };
+    }),
+
+  setPortalPassword: authenticatedProcedure
+    .input(
+      z.object({
+        newPassword: passwordSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!env.ENABLE_PASSWORD_LOGIN) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Password login is disabled",
+        });
+      }
+
+      try {
+        await auth.api.setPassword({
+          headers: ctx.headers,
+          body: {
+            newPassword: input.newPassword,
+          },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to set portal password";
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message,
+        });
+      }
+
+      return {
+        success: true,
       };
     }),
 
