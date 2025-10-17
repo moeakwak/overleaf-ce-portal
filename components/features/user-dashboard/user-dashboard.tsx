@@ -1,23 +1,17 @@
 "use client";
 
 import {
-  IconAlertTriangle,
-  IconCheck,
   IconCopy,
   IconKey,
   IconLink,
   IconLoader,
-  IconLogout,
-  IconRefresh,
   IconUnlink,
   IconUserPlus,
 } from "@tabler/icons-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OverleafStatusBanner } from "@/components/common/overleaf-status-banner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -35,26 +29,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Session } from "@/lib/auth";
 import { signOut } from "@/lib/auth-client";
 import { trpc } from "@/lib/trpc/client";
-import { cn } from "@/lib/utils";
+import type { StatusDescriptor } from "./account-overview-card";
+import { AccountOverviewCard } from "./account-overview-card";
+import { AccountSetupCard } from "./account-setup-card";
+import { HeaderBar } from "./header-bar";
+import { LinkedAccountsCard } from "./linked-accounts-card";
+import { OidcConnectionsCard } from "./oidc-connections-card";
+import { PortalAccessCard } from "./portal-access-card";
 
 type UserDashboardProps = {
   session: Session;
 };
 
-type StatusDescriptor = {
-  tone: "success" | "info" | "warning" | "danger";
-  title: string;
-  description: string;
-};
-
-const toneStyles: Record<StatusDescriptor["tone"], string> = {
-  success:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  info: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-  warning:
-    "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  danger: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-};
+// StatusDescriptor type imported from AccountOverviewCard
 
 function getRandomIndex(range: number) {
   if (range <= 0) return 0;
@@ -573,53 +560,16 @@ export function UserDashboard({ session }: UserDashboardProps) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       {!isOverleafAvailable && <OverleafStatusBanner isAdmin={false} />}
-      <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold sm:text-3xl">
-            Welcome back, {session.user.name ?? session.user.email}
-          </h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            Manage your Overleaf CE account connection and keep your credentials
-            up to date.
-          </p>
-          <span className="text-sm text-muted-foreground">
-            {session.user.email}
-          </span>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Log Out"
-            aria-label="Log Out"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-          >
-            {isSigningOut ? (
-              <IconLoader className="h-4 w-4 animate-spin" />
-            ) : (
-              <IconLogout className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            disabled={isFetching || isLoading}
-          >
-            {isFetching ? (
-              <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <IconRefresh className="mr-2 h-4 w-4" />
-            )}
-            Refresh
-          </Button>
-          {session.user.role === "super-admin" ? (
-            <Button asChild>
-              <Link href="/admin/dashboard">Open Admin Portal</Link>
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <HeaderBar
+        userName={session.user.name}
+        userEmail={session.user.email}
+        userRole={session.user.role}
+        isSigningOut={isSigningOut}
+        isFetching={isFetching}
+        isLoading={isLoading}
+        onSignOut={handleSignOut}
+        onRefresh={() => refetch()}
+      />
 
       {isLoading ? (
         <div className="grid gap-4">
@@ -634,289 +584,43 @@ export function UserDashboard({ session }: UserDashboardProps) {
             <TabsTrigger value="portal-settings">Portal Settings</TabsTrigger>
           </TabsList>
           <TabsContent value="overleaf-service" className="mt-6 space-y-6">
-            {shouldShowSetupCard ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Setup</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-medium">
-                      {accountSetupHeadingMap[accountSetupState]}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      {accountSetupMessageMap[accountSetupState]}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {accountSetupState === "unregistered" ? (
-                      <Button
-                        onClick={handleCreateAccount}
-                        disabled={createButtonDisabled}
-                        title={
-                          createButtonDisabled
-                            ? createButtonDisabledReason
-                            : undefined
-                        }
-                      >
-                        {createAccountMutation.isPending ? (
-                          <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <IconUserPlus className="mr-2 h-4 w-4" />
-                        )}
-                        Create And Link New Account
-                      </Button>
-                    ) : null}
+            <AccountSetupCard
+              visible={shouldShowSetupCard}
+              state={accountSetupState}
+              heading={accountSetupHeadingMap[accountSetupState]}
+              message={accountSetupMessageMap[accountSetupState]}
+              isOverleafAvailable={isOverleafAvailable}
+              createDisabled={createButtonDisabled}
+              createDisabledReason={createButtonDisabledReason}
+              linkDisabled={manualLinkDisabled}
+              linkDisabledTitle={manualLinkDisabledTitle}
+              isCreatePending={createAccountMutation.isPending}
+              isPrimaryLinkPending={linkPrimaryAccountMutation.isPending}
+              isManualLinkPending={linkAccountMutation.isPending}
+              onCreate={handleCreateAccount}
+              onLinkPrimary={handleLinkPrimaryAccount}
+              onOpenManualLink={() => setIsLinkDialogOpen(true)}
+            />
 
-                    {accountSetupState === "registered" ? (
-                      <Button
-                        onClick={handleLinkPrimaryAccount}
-                        disabled={
-                          !isOverleafAvailable ||
-                          linkPrimaryAccountMutation.isPending
-                        }
-                        title={
-                          !isOverleafAvailable
-                            ? "Overleaf service is currently unavailable. Please try again later."
-                            : undefined
-                        }
-                      >
-                        {linkPrimaryAccountMutation.isPending ? (
-                          <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <IconLink className="mr-2 h-4 w-4" />
-                        )}
-                        Link With Portal Email
-                      </Button>
-                    ) : null}
+            <AccountOverviewCard status={primaryStatus} />
 
-                    {accountSetupState !== "linked" &&
-                    accountSetupState !== "conflict" ? (
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsLinkDialogOpen(true)}
-                        disabled={manualLinkDisabled}
-                        title={manualLinkDisabledTitle}
-                      >
-                        {linkAccountMutation.isPending ? (
-                          <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <IconLink className="mr-2 h-4 w-4" />
-                        )}
-                        Link Different Overleaf Account
-                      </Button>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                {primaryStatus ? (
-                  <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4">
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full",
-                        toneStyles[primaryStatus.tone],
-                      )}
-                    >
-                      {primaryStatus.tone === "success" ? (
-                        <IconCheck className="h-5 w-5" />
-                      ) : (
-                        <IconAlertTriangle className="h-5 w-5" />
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <h2 className="text-lg font-medium">
-                        {primaryStatus.title}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {primaryStatus.description}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Linked Overleaf account</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                {linkedAccounts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    You have not linked an Overleaf account yet.
-                  </p>
-                ) : (
-                  linkedAccounts.map((account) => {
-                    const summary = account.profile;
-                    const passwordValue =
-                      passwordDrafts[account.overleafUserId] ?? "";
-                    const isEditing =
-                      editingAccountId === account.overleafUserId;
-                    const disableAccountActions =
-                      updatePasswordMutation.isPending ||
-                      unlinkAccountMutation.isPending;
-
-                    return (
-                      <div
-                        key={account.overleafUserId}
-                        className="rounded-lg border p-4"
-                      >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-semibold">
-                              {summary?.email ??
-                                account.overleafUserEmail ??
-                                "Unknown email"}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              ID: {account.overleafUserId}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <Badge variant="outline">
-                              {summary?.isAdmin ? "overleaf-admin" : "standard"}
-                            </Badge>
-                            <Badge variant="secondary">
-                              Portal role: {data.portalUser.role}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                          <div>
-                            <span className="block text-xs uppercase tracking-wide">
-                              Sign up date
-                            </span>
-                            <span className="text-foreground">
-                              {formatDate(summary?.signUpDate)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="block text-xs uppercase tracking-wide">
-                              Last active
-                            </span>
-                            <span className="text-foreground">
-                              {formatDate(
-                                summary?.lastActive ?? summary?.lastLoggedIn,
-                              )}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="block text-xs uppercase tracking-wide">
-                              Login count
-                            </span>
-                            <span className="text-foreground">
-                              {summary?.loginCount ?? 0}
-                            </span>
-                          </div>
-                        </div>
-
-                        {isEditing ? (
-                          <form
-                            className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
-                            onSubmit={(event) =>
-                              handlePasswordUpdate(
-                                account.overleafUserId,
-                                event,
-                              )
-                            }
-                          >
-                            <div className="grid gap-2">
-                              <Label
-                                htmlFor={`password-${account.overleafUserId}`}
-                              >
-                                New Password
-                              </Label>
-                              <Input
-                                id={`password-${account.overleafUserId}`}
-                                type="password"
-                                value={passwordValue}
-                                onChange={(event) =>
-                                  setPasswordDrafts((prev) => ({
-                                    ...prev,
-                                    [account.overleafUserId]:
-                                      event.target.value,
-                                  }))
-                                }
-                                placeholder="Enter a new password"
-                                disabled={disableAccountActions}
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingAccountId(null);
-                                  setPasswordDrafts((prev) => ({
-                                    ...prev,
-                                    [account.overleafUserId]: "",
-                                  }));
-                                }}
-                                disabled={disableAccountActions}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                type="submit"
-                                disabled={disableAccountActions}
-                              >
-                                {updatePasswordMutation.isPending ? (
-                                  <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <IconKey className="mr-2 h-4 w-4" />
-                                )}
-                                Save Password
-                              </Button>
-                            </div>
-                          </form>
-                        ) : (
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                setEditingAccountId(account.overleafUserId)
-                              }
-                              disabled={disableAccountActions}
-                            >
-                              <IconKey className="mr-2 h-4 w-4" />
-                              Update Password
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={() => {
-                                setUnlinkTarget({
-                                  id: account.overleafUserId,
-                                  label:
-                                    summary?.email ??
-                                    account.overleafUserEmail ??
-                                    account.overleafUserId,
-                                });
-                                setIsUnlinkDialogOpen(true);
-                              }}
-                              disabled={disableAccountActions}
-                            >
-                              {unlinkAccountMutation.isPending ? (
-                                <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <IconUnlink className="mr-2 h-4 w-4" />
-                              )}
-                              Unlink Account
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
+            <LinkedAccountsCard
+              linkedAccounts={linkedAccounts}
+              portalRole={data.portalUser.role}
+              editingAccountId={editingAccountId}
+              passwordDrafts={passwordDrafts}
+              isUpdatePasswordPending={updatePasswordMutation.isPending}
+              isUnlinkPending={unlinkAccountMutation.isPending}
+              onSetEditing={(id) => setEditingAccountId(id)}
+              onChangePasswordDraft={(accountId, value) =>
+                setPasswordDrafts((prev) => ({ ...prev, [accountId]: value }))
+              }
+              onSubmitPasswordUpdate={handlePasswordUpdate}
+              onRequestUnlink={(id, label) => {
+                setUnlinkTarget({ id, label });
+                setIsUnlinkDialogOpen(true);
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="portal-settings" className="mt-6 space-y-6">
@@ -954,93 +658,23 @@ export function UserDashboard({ session }: UserDashboardProps) {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Portal Access</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {passwordLoginEnabled ? (
-                  <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                      <h3 className="text-base font-medium">
-                        {portalPasswordExists
-                          ? "Portal Password Enabled"
-                          : "Portal Password Not Set"}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {portalPasswordExists
-                          ? "Update your portal password to secure your account. This action will sign out other sessions."
-                          : "Set up a portal password to enable email and password sign-in alongside OIDC access."}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => {
-                        if (!portalPasswordMutationPending) {
-                          setIsPortalPasswordDialogOpen(true);
-                        }
-                      }}
-                      disabled={portalPasswordMutationPending}
-                    >
-                      {portalPasswordMutationPending ? (
-                        <IconLoader className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <IconKey className="mr-2 h-4 w-4" />
-                      )}
-                      {portalPasswordButtonLabel}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed bg-muted/40 p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Portal password login is disabled. Use your
-                      organization&apos;s single sign-on to access the portal.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PortalAccessCard
+              passwordLoginEnabled={passwordLoginEnabled}
+              portalPasswordExists={portalPasswordExists}
+              portalPasswordMutationPending={portalPasswordMutationPending}
+              portalPasswordButtonLabel={portalPasswordButtonLabel}
+              onOpenPasswordDialog={() => {
+                if (!portalPasswordMutationPending) {
+                  setIsPortalPasswordDialogOpen(true);
+                }
+              }}
+            />
 
             {oidcLoginEnabled ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{oidcProviderName} Connection</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Your portal account can also authenticate via{" "}
-                    {oidcProviderName}. Linked identities are listed below.
-                  </p>
-                  {oidcConnections.length > 0 ? (
-                    <div className="space-y-3">
-                      {oidcConnections.map((connection) => (
-                        <div
-                          key={`${connection.providerId}-${connection.accountId}`}
-                          className="rounded-lg border p-4 text-sm"
-                        >
-                          <div className="space-y-1">
-                            <span className="font-medium">Account ID</span>
-                            <p className="font-mono text-xs text-muted-foreground">
-                              {connection.accountId}
-                            </p>
-                          </div>
-                          <div className="mt-3 flex flex-col gap-1">
-                            <span className="text-muted-foreground">
-                              Linked on
-                            </span>
-                            <span>{formatDate(connection.linkedAt)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No OIDC connection has been established yet. It will
-                      appear here after your first sign-in via{" "}
-                      {oidcProviderName}.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <OidcConnectionsCard
+                oidcProviderName={oidcProviderName}
+                connections={oidcConnections}
+              />
             ) : null}
           </TabsContent>
         </Tabs>
