@@ -176,6 +176,23 @@ export class OverleafInstance {
     };
   }
 
+  /**
+   * Check if the Overleaf instance is available and operational
+   * Returns true if all critical components (MongoDB, Redis, Docker) are working
+   */
+  public async isAvailable(): Promise<boolean> {
+    try {
+      const health = await this.healthCheck();
+      return (
+        health.mongodb.connected &&
+        health.redis.connected &&
+        health.docker.containerRunning
+      );
+    } catch {
+      return false;
+    }
+  }
+
   // Private connection methods
 
   private async connectMongo(): Promise<void> {

@@ -80,6 +80,7 @@ export const selfRouter = router({
     const session = ctx.session;
     const portalUserService = appContext.getPortalUserService();
     const overleafUserService = appContext.getOverleafUserService();
+    const systemService = appContext.getOverleafSystemService();
 
     const portalUser = await getCurrentPortalUser(session.user.id);
     const portalAccounts = await db
@@ -100,52 +101,102 @@ export const selfRouter = router({
       overleafUserEmail: link.overleafUserEmail,
     }));
 
-    const overleafIds = Array.from(
-      new Set(links.map((link) => link.overleafUserId)),
-    );
-    const overleafUsers = await overleafUserService.getUsersByIds(overleafIds);
-    const overleafSummaries = overleafUsers.map((user) =>
-      mapOverleafUserToSummary(user),
-    );
-    const overleafUserMap = new Map(
-      overleafSummaries.map((summary) => [summary.id, summary]),
-    );
+    // Check if Overleaf instance is available
+    const overleafInstance = appContext.getOverleafInstance();
+    const isOverleafAvailable = await overleafInstance.isAvailable();
 
-    const linkedAccounts = links.map((link) => ({
-      overleafUserId: link.overleafUserId,
-      overleafUserEmail: link.overleafUserEmail,
-      profile: overleafUserMap.get(link.overleafUserId) ?? null,
-    }));
+    // Always show linkedAccounts based on database links
+    // Only try to fetch profile details if Overleaf is available
+    let linkedAccounts: Array<{
+      overleafUserId: string;
+      overleafUserEmail: string | null;
+      profile: ReturnType<typeof mapOverleafUserToSummary> | null;
+    }> = [];
+
+    if (isOverleafAvailable) {
+      try {
+        const overleafIds = Array.from(
+          new Set(links.map((link) => link.overleafUserId)),
+        );
+        const overleafUsers =
+          await overleafUserService.getUsersByIds(overleafIds);
+        const overleafSummaries = overleafUsers.map((user) =>
+          mapOverleafUserToSummary(user),
+        );
+        const overleafUserMap = new Map(
+          overleafSummaries.map((summary) => [summary.id, summary]),
+        );
+
+        linkedAccounts = links.map((link) => ({
+          overleafUserId: link.overleafUserId,
+          overleafUserEmail: link.overleafUserEmail,
+          profile: overleafUserMap.get(link.overleafUserId) ?? null,
+        }));
+      } catch (error) {
+        console.error(
+          "Failed to fetch Overleaf user profiles, using database links only:",
+          error,
+        );
+        // Fall back to database links without profiles
+        linkedAccounts = links.map((link) => ({
+          overleafUserId: link.overleafUserId,
+          overleafUserEmail: link.overleafUserEmail,
+          profile: null,
+        }));
+      }
+    } else {
+      // Overleaf unavailable, use database links only
+      linkedAccounts = links.map((link) => ({
+        overleafUserId: link.overleafUserId,
+        overleafUserEmail: link.overleafUserEmail,
+        profile: null,
+      }));
+    }
 
     const normalizedEmail = portalUser.email.trim().toLowerCase();
-    const overleafUserForEmail =
-      await overleafUserService.getUserByEmail(normalizedEmail);
-
     let linkedByOther: { id: string; name: string; email: string } | null =
       null;
     let linkedToCurrentUser = false;
+    let overleafUserForEmail = null;
 
-    if (overleafUserForEmail) {
-      const normalizedOverleafUserId = normalizeOverleafUserId(
-        overleafUserForEmail._id,
-      );
-      const linkOwner = await portalUserService.findPortalUserByOverleafUserId(
-        normalizedOverleafUserId,
-      );
+    // Only query Overleaf for primary email status if available
+    if (isOverleafAvailable) {
+      try {
+        overleafUserForEmail =
+          await overleafUserService.getUserByEmail(normalizedEmail);
 
-      if (linkOwner) {
-        if (linkOwner.id === portalUser.id) {
-          linkedToCurrentUser = true;
-        } else {
-          linkedByOther = linkOwner;
+        if (overleafUserForEmail) {
+          const normalizedOverleafUserId = normalizeOverleafUserId(
+            overleafUserForEmail._id,
+          );
+          const linkOwner =
+            await portalUserService.findPortalUserByOverleafUserId(
+              normalizedOverleafUserId,
+            );
+
+          if (linkOwner) {
+            if (linkOwner.id === portalUser.id) {
+              linkedToCurrentUser = true;
+            } else {
+              linkedByOther = linkOwner;
+            }
+          }
+
+          if (!linkedToCurrentUser) {
+            linkedToCurrentUser = links.some(
+              (link) => link.overleafUserId === normalizedOverleafUserId,
+            );
+          }
         }
-      }
-
-      if (!linkedToCurrentUser) {
-        linkedToCurrentUser = links.some(
-          (link) => link.overleafUserId === normalizedOverleafUserId,
+      } catch (error) {
+        console.error(
+          "Failed to fetch Overleaf user by email, skipping primary email status:",
+          error,
         );
       }
+    } else {
+      // When Overleaf is unavailable, determine linkedToCurrentUser from database links only
+      linkedToCurrentUser = links.length > 0;
     }
 
     return {
@@ -181,6 +232,7 @@ export const selfRouter = router({
           })),
         hasPassword: hasCredentialPassword,
       },
+      overleafInstanceAvailable: isOverleafAvailable,
     };
   }),
 

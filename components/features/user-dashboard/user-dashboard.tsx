@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { OverleafStatusBanner } from "@/components/common/overleaf-status-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -279,16 +280,35 @@ export function UserDashboard({ session }: UserDashboardProps) {
       return null;
     }
 
-    const { primaryEmailStatus } = data;
+    const { linkedAccounts, primaryEmailStatus, overleafInstanceAvailable } =
+      data;
 
-    if (!primaryEmailStatus.overleafUser) {
+    // Primary logic: check database linkedAccounts first
+    const hasLinkedAccount = linkedAccounts.length > 0;
+
+    if (hasLinkedAccount) {
+      // If database has link, always show as linked regardless of Overleaf availability
       return {
-        tone: "warning",
-        title: "No Overleaf account found",
-        description: `We could not find an Overleaf CE account for ${primaryEmailStatus.email}. You can create a new account now.`,
+        tone: "success",
+        title: "Overleaf account linked",
+        description:
+          "Your portal profile is connected to an Overleaf CE account.",
       } satisfies StatusDescriptor;
     }
 
+    // No linked account in database
+    // If Overleaf is unavailable, show specific message
+    if (!overleafInstanceAvailable) {
+      return {
+        tone: "info",
+        title: "Overleaf service unavailable",
+        description:
+          "Cannot verify Overleaf account status. The service is currently unavailable. If you have already linked an account, it will appear here once the service is restored.",
+      } satisfies StatusDescriptor;
+    }
+
+    // Overleaf is available and no link in database
+    // Now check real-time Overleaf status
     if (primaryEmailStatus.linkedByOther) {
       return {
         tone: "danger",
@@ -297,19 +317,18 @@ export function UserDashboard({ session }: UserDashboardProps) {
       } satisfies StatusDescriptor;
     }
 
-    if (primaryEmailStatus.linkedToCurrentUser) {
+    if (primaryEmailStatus.overleafUser) {
       return {
-        tone: "success",
-        title: "Primary Overleaf account linked",
-        description:
-          "Your portal profile is connected to the matching Overleaf CE account.",
+        tone: "info",
+        title: "Overleaf account available to link",
+        description: `An Overleaf CE account for ${primaryEmailStatus.email} exists but is not linked yet. Use the Account Setup actions to connect it.`,
       } satisfies StatusDescriptor;
     }
 
     return {
-      tone: "info",
-      title: "Overleaf account available to link",
-      description: `An Overleaf CE account for ${primaryEmailStatus.email} exists but is not linked yet. Use the Account Setup actions to connect it.`,
+      tone: "warning",
+      title: "No Overleaf account found",
+      description: `We could not find an Overleaf CE account for ${primaryEmailStatus.email}. You can create a new account now.`,
     } satisfies StatusDescriptor;
   }, [data]);
 
@@ -436,6 +455,7 @@ export function UserDashboard({ session }: UserDashboardProps) {
   const primaryOverleafUser = data?.primaryEmailStatus.overleafUser ?? null;
   const primaryLinkedByOther = Boolean(data?.primaryEmailStatus.linkedByOther);
   const linkedByOtherInfo = data?.primaryEmailStatus.linkedByOther ?? null;
+  const isOverleafAvailable = data?.overleafInstanceAvailable ?? true;
   const linkedAccountLabels = linkedAccounts
     .map((account) => account.overleafUserEmail ?? account.overleafUserId)
     .filter((value): value is string => Boolean(value));
@@ -490,9 +510,14 @@ export function UserDashboard({ session }: UserDashboardProps) {
   };
 
   const createButtonDisabled =
-    accountSetupState !== "unregistered" || createAccountMutation.isPending;
+    !isOverleafAvailable ||
+    accountSetupState !== "unregistered" ||
+    createAccountMutation.isPending;
   let createButtonDisabledReason: string | undefined;
-  if (accountSetupState === "registered") {
+  if (!isOverleafAvailable) {
+    createButtonDisabledReason =
+      "Overleaf service is currently unavailable. Please try again later.";
+  } else if (accountSetupState === "registered") {
     createButtonDisabledReason = `An Overleaf account already exists for ${primaryEmail}.`;
   } else if (accountSetupState === "conflict") {
     createButtonDisabledReason = linkedByOtherInfo
@@ -503,11 +528,15 @@ export function UserDashboard({ session }: UserDashboardProps) {
   }
 
   const linkButtonDisabled =
+    !isOverleafAvailable ||
     hasLinkedAccount ||
     accountSetupState === "conflict" ||
     linkAccountMutation.isPending;
   let linkButtonDisabledReason: string | undefined;
-  if (hasLinkedAccount || accountSetupState === "linked") {
+  if (!isOverleafAvailable) {
+    linkButtonDisabledReason =
+      "Overleaf service is currently unavailable. Please try again later.";
+  } else if (hasLinkedAccount || accountSetupState === "linked") {
     linkButtonDisabledReason = "You have already linked an Overleaf account.";
   } else if (accountSetupState === "conflict") {
     linkButtonDisabledReason = linkedByOtherInfo
@@ -517,10 +546,16 @@ export function UserDashboard({ session }: UserDashboardProps) {
 
   const shouldShowSetupCard = !hasLinkedAccount;
   const manualLinkDisabled =
-    linkButtonDisabled || linkPrimaryAccountMutation.isPending;
+    !isOverleafAvailable ||
+    linkButtonDisabled ||
+    linkPrimaryAccountMutation.isPending;
   const manualLinkDisabledTitle = manualLinkDisabled
-    ? linkButtonDisabledReason ||
-      (linkPrimaryAccountMutation.isPending ? "Linking in progress" : undefined)
+    ? !isOverleafAvailable
+      ? "Overleaf service is currently unavailable. Please try again later."
+      : linkButtonDisabledReason ||
+        (linkPrimaryAccountMutation.isPending
+          ? "Linking in progress"
+          : undefined)
     : undefined;
 
   const handleLinkPrimaryAccount = async () => {
@@ -537,6 +572,7 @@ export function UserDashboard({ session }: UserDashboardProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      {!isOverleafAvailable && <OverleafStatusBanner isAdmin={false} />}
       <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold sm:text-3xl">
@@ -635,7 +671,15 @@ export function UserDashboard({ session }: UserDashboardProps) {
                     {accountSetupState === "registered" ? (
                       <Button
                         onClick={handleLinkPrimaryAccount}
-                        disabled={linkPrimaryAccountMutation.isPending}
+                        disabled={
+                          !isOverleafAvailable ||
+                          linkPrimaryAccountMutation.isPending
+                        }
+                        title={
+                          !isOverleafAvailable
+                            ? "Overleaf service is currently unavailable. Please try again later."
+                            : undefined
+                        }
                       >
                         {linkPrimaryAccountMutation.isPending ? (
                           <IconLoader className="mr-2 h-4 w-4 animate-spin" />

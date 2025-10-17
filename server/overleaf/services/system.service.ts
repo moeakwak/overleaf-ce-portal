@@ -10,6 +10,7 @@ import { OverleafUserRepository } from "../repositories/user.repository";
  */
 export interface SystemHealthStatus {
   overall: "healthy" | "warning" | "error";
+  overleafInstanceAvailable: boolean;
   components: {
     docker: {
       status: "healthy" | "error";
@@ -69,11 +70,13 @@ export class OverleafSystemService {
 
     try {
       // Check all components in parallel
-      const [dockerStatus, mongoHealth, redisHealth] = await Promise.all([
-        this.checkDockerHealth(),
-        this.checkMongoDBHealth(),
-        this.checkRedisHealth(),
-      ]);
+      const [dockerStatus, mongoHealth, redisHealth, instanceAvailable] =
+        await Promise.all([
+          this.checkDockerHealth(),
+          this.checkMongoDBHealth(),
+          this.checkRedisHealth(),
+          this.instance.isAvailable(),
+        ]);
 
       // Determine overall status
       const hasErrors = [dockerStatus, mongoHealth, redisHealth].some(
@@ -86,6 +89,7 @@ export class OverleafSystemService {
 
       return {
         overall,
+        overleafInstanceAvailable: instanceAvailable,
         components: {
           docker: dockerStatus,
           mongodb: mongoHealth,
@@ -96,6 +100,7 @@ export class OverleafSystemService {
     } catch (_error) {
       return {
         overall: "error",
+        overleafInstanceAvailable: false,
         components: {
           docker: {
             status: "error",
