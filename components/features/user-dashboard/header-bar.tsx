@@ -34,10 +34,8 @@ export function HeaderBar(props: HeaderBarProps) {
           Welcome back, {userName ?? userEmail}
         </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          Manage your Overleaf CE account connection and keep your credentials
-          up to date.
+          {userEmail ? `${userEmail}` : "No email found"}
         </p>
-        <span className="text-sm text-muted-foreground">{userEmail}</span>
       </div>
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
         <Button

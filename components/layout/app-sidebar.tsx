@@ -27,6 +27,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { Session } from "@/lib/auth";
+import packageJson from "@/package.json";
 
 const navigation = {
   navMain: [
@@ -75,6 +76,8 @@ const navigation = {
   ],
 };
 
+const portalVersion = packageJson.version;
+
 export function AppSidebar({
   session,
   ...props
@@ -97,8 +100,11 @@ export function AppSidebar({
             >
               <Link href="/admin/dashboard">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">
+                <span className="flex items-center gap-1 text-base font-semibold">
                   Overleaf CE Portal
+                  <span className="ml-1 text-xs font-medium text-muted-foreground">
+                    v{portalVersion}
+                  </span>
                 </span>
               </Link>
             </SidebarMenuButton>
