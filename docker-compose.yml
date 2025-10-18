@@ -1,0 +1,23 @@
+services:
+  portal:
+    image: overleaf-ce-portal:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.bun
+    env_file:
+      - .env.local
+    environment:
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    ports:
+      - "3100:3000"
+    volumes:
+      - ./sqlite.db:/app/sqlite.db:rw
+    restart: unless-stopped
+    networks:
+      - overleaf-toolkit
+
+networks:
+  overleaf-toolkit:
+    external: true
+    name: overleaf_default

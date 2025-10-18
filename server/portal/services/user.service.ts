@@ -9,13 +9,13 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { db } from "@/lib/db";
 import type * as schema from "@/lib/db/schema";
 import { portalUserOverleafLink, user } from "@/lib/db/schema";
 
 type DbConnection =
-  | BetterSQLite3Database<typeof schema>
+  | BunSQLiteDatabase<typeof schema>
   | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type PortalUserListOptions = {
