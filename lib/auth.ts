@@ -10,6 +10,8 @@ export type UserRole = (typeof USER_ROLES)[number];
 
 const defaultOidcScopes = ["openid", "profile", "email"];
 
+const trustedOrigins = env.BETTER_AUTH_TRUSTED_ORIGINS;
+
 // Build auth plugins array
 function getAuthPlugins() {
   const plugins: (
@@ -100,6 +102,8 @@ export const auth = betterAuth({
   }),
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.NEXT_PUBLIC_APP_URL,
+  trustedOrigins:
+    trustedOrigins && trustedOrigins.length > 0 ? trustedOrigins : undefined,
   emailAndPassword: {
     enabled: env.ENABLE_PASSWORD_LOGIN,
   },

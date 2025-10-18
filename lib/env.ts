@@ -16,6 +16,20 @@ export const env = createEnv({
   server: {
     // Better Auth Configuration
     BETTER_AUTH_SECRET: z.string().min(1, "Better Auth secret is required"),
+    BETTER_AUTH_TRUSTED_ORIGINS: z.preprocess((value) => {
+      if (typeof value !== "string") {
+        return undefined;
+      }
+
+      const origins = value
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0);
+
+      return origins.length > 0 ? origins : undefined;
+    }, z
+      .array(z.string().url("Better Auth trusted origins must be valid URLs"))
+      .optional()),
     INITIAL_SUPERADMIN_EMAIL: z
       .string()
       .email("Initial super admin email must be valid")
@@ -69,6 +83,7 @@ export const env = createEnv({
   runtimeEnv: {
     // Server-side variables
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_TRUSTED_ORIGINS: process.env.BETTER_AUTH_TRUSTED_ORIGINS,
     INITIAL_SUPERADMIN_EMAIL: process.env.INITIAL_SUPERADMIN_EMAIL,
     INITIAL_SUPERADMIN_PASSWORD: process.env.INITIAL_SUPERADMIN_PASSWORD,
     DATABASE_URL: process.env.DATABASE_URL,
