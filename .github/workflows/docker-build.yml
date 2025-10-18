@@ -40,10 +40,10 @@ jobs:
       - name: Build and push Bun image
         uses: docker/build-push-action@v6
         with:
-          context: ./overleaf-ce-portal
-          file: Dockerfile.bun
+          context: .
+          file: ./Dockerfile.bun
           push: true
           provenance: false
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
