@@ -5,14 +5,14 @@ services:
       context: .
       dockerfile: Dockerfile.bun
     env_file:
-      - .env.local
+      - .env.docker
     environment:
       - PORT=3000
       - HOSTNAME=0.0.0.0
     ports:
       - "3100:3000"
     volumes:
-      - ./sqlite.db:/app/sqlite.db:rw
+      - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     networks:
