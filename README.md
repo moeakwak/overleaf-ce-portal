@@ -1,52 +1,60 @@
 # Overleaf CE Portal
 
-This document explains how to build and run the Overleaf CE portal as a Docker container using Bun and Docker Compose.
+The portal is published as `ghcr.io/moeakwak/overleaf-ce-portal:latest` and is meant to run alongside an Overleaf Toolkit deployment.
 
-## Prerequisites
+## Quick Deploy
 
-- Docker Engine 24 or later
-- Access to the `overleaf_default` Docker network (created by the Overleaf Toolkit)
-- A prepared `.env.local` file that mirrors `overleaf-ce-portal/.env.example`
+1. Prepare `.env.local` file by copying `.env.example` and filling in the values.
 
-## Quick Start
+2. Ensure the Overleaf Toolkit expose ports and Docker socket by adding `overleaf-toolkit/config/docker-compose.override.yml` with:
 
-### 1. Build the image
+   ```yaml
+   services:
+     mongo:
+       ports:
+         - "27017:27017"
+     redis:
+       ports:
+         - "6379:6379"
+   ```
 
-```bash
-docker compose build
-```
+3. Save a `docker-compose.yml` next to `.env.local` (for example in `overleaf-ce-portal`) using the published image:
 
-### 2. Run database migrations
+   ```yaml
+   services:
+     portal:
+       image: ghcr.io/moeakwak/overleaf-ce-portal:latest
+       env_file:
+         - .env.local
+       environment:
+         - PORT=3000
+         - HOSTNAME=0.0.0.0
+       ports:
+         - "3000:3000"
+       volumes:
+         - ./sqlite.db:/app/sqlite.db:rw
+         - /var/run/docker.sock:/var/run/docker.sock:ro
+       restart: unless-stopped
+       networks:
+         - overleaf-toolkit
 
-Use the one-off container to run Drizzle migrations before starting the service:
+   networks:
+     overleaf-toolkit:
+       external: true
+       name: overleaf_default
+   ```
 
-```bash
-docker compose run --rm portal bun run db:migrate
-```
+4. Pull the image and run migrations:
 
-This command executes `scripts/migrate.ts`, which invokes the Drizzle migrator against the SQLite database configured via `DATABASE_URL`.
+   ```bash
+   docker compose pull
+   docker compose run --rm portal bun run db:migrate
+   ```
 
-If the container is already running, execute the same command inside it:
+5. Start the service:
 
-```bash
-docker compose exec portal bun run db:migrate
-docker compose restart portal
-```
+   ```bash
+   docker compose up -d
+   ```
 
-### 3. Start the service
-
-```bash
-docker compose up -d
-```
-
-Check logs with:
-
-```bash
-docker compose logs -f
-```
-
-The application listens on `http://localhost:3100` (forwarded to container port `3000`).
-
-## CI/CD
-
-The workflow at `.github/workflows/docker-build.yml` builds and publishes the Bun-based image to GitHub Container Registry. Ensure `packages: write` permissions are enabled for the workflow or provide a personal access token with the required scope.
+The portal will be available at `http://localhost:3000`.
