@@ -29,13 +29,15 @@ export function UserTooltip({ user, children, side = "top" }: UserTooltipProps) 
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent side={side}>
           <div className="space-y-1">
-            <div className="font-medium">{getUserDisplayName(user)}</div>
-            <div className="text-xs text-muted-foreground">{user.email}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="font-medium text-sm">
+              {getUserDisplayName(user)}
+            </div>
+            <div className="text-xs text-background/80">{user.email}</div>
+            <div className="text-xs text-background/80">
               ID: {formatUserId(user._id)}
             </div>
             {user.lastLoggedIn && (
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-background/80">
                 Last login: {new Date(user.lastLoggedIn).toLocaleString()}
               </div>
             )}
@@ -65,19 +67,21 @@ export function CollaboratorTooltip({
           <div className="space-y-3">
             {readWriteUsers.length > 0 && (
               <div>
-                <div className="font-medium text-xs mb-2 text-green-600">
+                <div className="font-medium text-xs mb-2">
                   Read & Write ({readWriteUsers.length}):
                 </div>
                 <div className="space-y-1">
                   {readWriteUsers.map((user) => (
                     <div key={user._id} className="text-xs">
-                      <div className="font-medium">{getUserDisplayName(user)}</div>
-                      <div className="text-muted-foreground">{user.email}</div>
-                      <div className="text-muted-foreground">
+                      <div className="font-medium">
+                        {getUserDisplayName(user)}
+                      </div>
+                      <div className="text-background/80">{user.email}</div>
+                      <div className="text-background/80">
                         ID: {formatUserId(user._id)}
                       </div>
                       {user.lastLoggedIn && (
-                        <div className="text-muted-foreground">
+                        <div className="text-background/80">
                           Last login: {new Date(user.lastLoggedIn).toLocaleString()}
                         </div>
                       )}
@@ -88,19 +92,21 @@ export function CollaboratorTooltip({
             )}
             {readOnlyUsers.length > 0 && (
               <div>
-                <div className="font-medium text-xs mb-2 text-blue-600">
+                <div className="font-medium text-xs mb-2">
                   Read Only ({readOnlyUsers.length}):
                 </div>
                 <div className="space-y-1">
                   {readOnlyUsers.map((user) => (
                     <div key={user._id} className="text-xs">
-                      <div className="font-medium">{getUserDisplayName(user)}</div>
-                      <div className="text-muted-foreground">{user.email}</div>
-                      <div className="text-muted-foreground">
+                      <div className="font-medium">
+                        {getUserDisplayName(user)}
+                      </div>
+                      <div className="text-background/80">{user.email}</div>
+                      <div className="text-background/80">
                         ID: {formatUserId(user._id)}
                       </div>
                       {user.lastLoggedIn && (
-                        <div className="text-muted-foreground">
+                        <div className="text-background/80">
                           Last login: {new Date(user.lastLoggedIn).toLocaleString()}
                         </div>
                       )}

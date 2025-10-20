@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import type { DockerCommandExecutor } from "../../connectors/docker-executor";
 import type {
   OverleafDoc,
@@ -220,6 +221,25 @@ export class OverleafProjectService {
     hasMore: boolean;
   }> {
     try {
+      const normalizeId = (value: unknown): string | undefined => {
+        if (!value) return undefined;
+        if (typeof value === "string") return value;
+        if (value instanceof ObjectId) return value.toHexString();
+        if (
+          typeof value === "object" &&
+          "toHexString" in (value as Record<string, unknown>) &&
+          typeof (value as { toHexString: () => unknown }).toHexString ===
+            "function"
+        ) {
+          return (value as { toHexString: () => string }).toHexString();
+        }
+        return undefined;
+      };
+      const normalizeIdArray = (values: unknown[] | undefined): string[] =>
+        (values ?? [])
+          .map((value) => normalizeId(value))
+          .filter((value): value is string => typeof value === "string");
+
       const {
         limit = 50,
         offset = 0,
@@ -249,16 +269,95 @@ export class OverleafProjectService {
         this.projectRepo.count(filter),
       ]);
 
-      // Batch fetch owner information to avoid N+1 queries
-      const ownerIds = [...new Set(projects.map((p) => p.owner_ref))];
-      const users = await this.userRepo.findByIds(ownerIds);
-      const userMap = new Map(users.map((u) => [u._id, u]));
+      // Collect all referenced user IDs to avoid N+1 queries
+      const ownerIds = new Set<string>();
+      const collaboratorIds = new Set<string>();
+      const readOnlyIds = new Set<string>();
 
-      // Assemble data with owner information
-      const projectsWithOwner = projects.map((project) => ({
-        ...project,
-        ownerInfo: userMap.get(project.owner_ref),
-      }));
+      const projectReferenceData = projects.map((project) => {
+        const normalizedOwnerRef = normalizeId(project.owner_ref);
+        if (normalizedOwnerRef) {
+          ownerIds.add(normalizedOwnerRef);
+        }
+
+        const normalizedCollaborators = normalizeIdArray(
+          project.collaberator_refs,
+        );
+        for (const id of normalizedCollaborators) {
+          collaboratorIds.add(id);
+        }
+
+        const normalizedReadOnly = normalizeIdArray(project.readOnly_refs);
+        for (const id of normalizedReadOnly) {
+          readOnlyIds.add(id);
+        }
+
+        return {
+          project,
+          normalizedOwnerRef,
+          normalizedCollaborators,
+          normalizedReadOnly,
+        };
+      });
+
+      const allUserIds = [
+        ...new Set([...ownerIds, ...collaboratorIds, ...readOnlyIds]),
+      ];
+
+      const users =
+        allUserIds.length > 0 ? await this.userRepo.findByIds(allUserIds) : [];
+      const normalizedUsers = users.map((user) => {
+        const normalizedId = normalizeId(user._id) ?? String(user._id);
+        return {
+          ...user,
+          _id: normalizedId,
+        };
+      });
+      const userMap = new Map(normalizedUsers.map((user) => [user._id, user]));
+
+      const withType = <T extends "read-write" | "read-only">(
+        ids: string[],
+        type: T,
+      ) =>
+        ids
+          .map((id) => userMap.get(id))
+          .filter((user): user is (typeof normalizedUsers)[number] =>
+            Boolean(user),
+          )
+          .map((user) => ({
+            ...user,
+            type,
+          }));
+
+      // Assemble data with owner information and collaborator details
+      const projectsWithOwner = projectReferenceData.map(
+        ({
+          project,
+          normalizedOwnerRef,
+          normalizedCollaborators,
+          normalizedReadOnly,
+        }) => {
+          const ownerInfo = normalizedOwnerRef
+            ? userMap.get(normalizedOwnerRef)
+            : undefined;
+
+          const collaboratorUsers = [
+            ...withType(normalizedCollaborators, "read-write"),
+            ...withType(normalizedReadOnly, "read-only"),
+          ];
+
+          return {
+            ...project,
+            _id: normalizeId(project._id) ?? project._id,
+            owner_ref: normalizedOwnerRef ?? project.owner_ref,
+            collaberator_refs: normalizedCollaborators,
+            readOnly_refs: normalizedReadOnly,
+            ownerInfo,
+            ownerUser: ownerInfo,
+            collaboratorUsers,
+          };
+        },
+      );
 
       // Business logic: Calculate hasMore
       return {

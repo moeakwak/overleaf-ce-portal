@@ -2,6 +2,29 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
+const booleanWithDefault = (defaultValue: boolean) =>
+  z
+    .preprocess((value) => {
+      if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+
+        if (["true", "1", "yes", "on"].includes(normalized)) {
+          return true;
+        }
+
+        if (["false", "0", "no", "off"].includes(normalized)) {
+          return false;
+        }
+      }
+
+      if (typeof value === "number") {
+        return value !== 0;
+      }
+
+      return value;
+    }, z.boolean())
+    .default(defaultValue);
+
 // Load environment variables before validation
 // This is crucial for non-Next.js contexts (like drizzle-kit)
 // Next.js automatically loads .env files, but standalone scripts don't
@@ -55,8 +78,8 @@ export const env = createEnv({
       .default("development"),
 
     // Authentication toggles
-    ENABLE_PASSWORD_LOGIN: z.coerce.boolean().default(true),
-    ENABLE_OIDC_LOGIN: z.coerce.boolean().default(false),
+    ENABLE_PASSWORD_LOGIN: booleanWithDefault(true),
+    ENABLE_OIDC_LOGIN: booleanWithDefault(false),
 
     // Generic OIDC Provider Configuration
     OIDC_PROVIDER_ID: z.string().default("oidc-provider"),
@@ -118,3 +141,9 @@ export const env = createEnv({
    */
   emptyStringAsUndefined: true,
 });
+
+if (!env.ENABLE_PASSWORD_LOGIN && !env.ENABLE_OIDC_LOGIN) {
+  throw new Error(
+    "ENABLE_PASSWORD_LOGIN and ENABLE_OIDC_LOGIN cannot both be disabled",
+  );
+}

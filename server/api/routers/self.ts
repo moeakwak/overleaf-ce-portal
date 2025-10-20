@@ -100,7 +100,7 @@ export const selfRouter = router({
     const session = ctx.session;
     const portalUserService = appContext.getPortalUserService();
     const overleafUserService = appContext.getOverleafUserService();
-    const systemService = appContext.getOverleafSystemService();
+    const _systemService = appContext.getOverleafSystemService();
 
     const portalUser = await getCurrentPortalUser(session.user.id);
     const portalAccounts = await db
@@ -641,7 +641,6 @@ export const selfRouter = router({
     .mutation(async ({ ctx, input }) => {
       const session = ctx.session;
       const overleafUserService = appContext.getOverleafUserService();
-      const portalUserService = appContext.getPortalUserService();
 
       const portalUser = await getCurrentPortalUser(session.user.id);
       const normalizedTargetId = normalizeOverleafUserId(input.overleafUserId);

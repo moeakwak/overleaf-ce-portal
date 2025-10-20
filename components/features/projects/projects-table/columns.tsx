@@ -11,7 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CollaboratorTooltip, UserTooltip } from "@/components/ui/user-tooltip";
+import { UserBadge } from "@/components/ui/user-badge";
+import { CollaboratorTooltip } from "@/components/ui/user-tooltip";
 import {
   createDateSortingFn,
   formatDateCell,
@@ -20,16 +21,19 @@ import {
 } from "@/lib/table-utils";
 import type { OverleafProject } from "@/server/types/overleaf";
 
+type ProjectUser = {
+  _id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  lastLoggedIn?: Date | string;
+};
+
 // Extended Project type with optional user information
 export type Project = OverleafProject & {
   // Extended user info for owner and collaborators
-  ownerUser?: {
-    _id: string;
-    email: string;
-    first_name?: string;
-    last_name?: string;
-    lastLoggedIn?: Date | string;
-  };
+  ownerUser?: ProjectUser;
+  ownerInfo?: ProjectUser;
   collaboratorUsers?: Array<{
     _id: string;
     email: string;
@@ -214,25 +218,16 @@ export function createProjectsColumns(
       cell: ({ row }) => {
         const project = row.original;
 
-        if (project.ownerUser) {
-          return (
-            <UserTooltip user={project.ownerUser}>
-              <div className="cursor-help">
-                <div className="font-medium text-sm">
-                  {getUserDisplayName(project.ownerUser)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {formatUserId(project.ownerUser._id)}
-                </div>
-              </div>
-            </UserTooltip>
-          );
-        }
+        const owner = project.ownerUser ?? project.ownerInfo;
 
         return (
-          <div className="text-sm text-muted-foreground">
-            {project.owner_ref ? formatUserId(project.owner_ref) : "Unknown"}
-          </div>
+          <UserBadge
+            user={owner}
+            variant="secondary"
+            fallbackLabel={
+              project.owner_ref ? formatUserId(project.owner_ref) : "Unknown"
+            }
+          />
         );
       },
     },
